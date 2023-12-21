@@ -114,6 +114,7 @@ int MapBuilder::AddTrajectoryBuilder(
   }
 
   if (options_.use_trajectory_builder_3d()) {
+    /// 3d trajectory,在lua中可以进行定义
     std::unique_ptr<LocalTrajectoryBuilder3D> local_trajectory_builder;
     if (trajectory_options.has_trajectory_builder_3d_options()) {
       local_trajectory_builder = absl::make_unique<LocalTrajectoryBuilder3D>(
@@ -129,6 +130,7 @@ int MapBuilder::AddTrajectoryBuilder(
             static_cast<PoseGraph3D*>(pose_graph_.get()),
             local_slam_result_callback, pose_graph_odometry_motion_filter)));
   } else {
+    /// 2d trajectory,在lua中可以进行定义
     std::unique_ptr<LocalTrajectoryBuilder2D> local_trajectory_builder;
     if (trajectory_options.has_trajectory_builder_2d_options()) {
       local_trajectory_builder = absl::make_unique<LocalTrajectoryBuilder2D>(
@@ -147,6 +149,7 @@ int MapBuilder::AddTrajectoryBuilder(
   MaybeAddPureLocalizationTrimmer(trajectory_id, trajectory_options,
                                   pose_graph_.get());
 
+  /// 初始位姿,直接加到pgo中
   if (trajectory_options.has_initial_trajectory_pose()) {
     const auto& initial_trajectory_pose =
         trajectory_options.initial_trajectory_pose();
@@ -155,6 +158,7 @@ int MapBuilder::AddTrajectoryBuilder(
         transform::ToRigid3(initial_trajectory_pose.relative_pose()),
         common::FromUniversal(initial_trajectory_pose.timestamp()));
   }
+  /// 保存轨迹
   proto::TrajectoryBuilderOptionsWithSensorIds options_with_sensor_ids_proto;
   for (const auto& sensor_id : expected_sensor_ids) {
     *options_with_sensor_ids_proto.add_sensor_id() = ToProto(sensor_id);
