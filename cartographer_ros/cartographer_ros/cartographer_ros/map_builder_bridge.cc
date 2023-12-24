@@ -122,6 +122,8 @@ int MapBuilderBridge::AddTrajectory(
     const std::set<cartographer::mapping::TrajectoryBuilderInterface::SensorId>&
         expected_sensor_ids,
     const TrajectoryOptions& trajectory_options) {
+  /// 构建slam系统,返回trajectory id
+  /// 实际上调用的是MapBuilder的继承成员函数
   const int trajectory_id = map_builder_->AddTrajectoryBuilder(
       expected_sensor_ids, trajectory_options.trajectory_builder_options,
       [this](const int trajectory_id, const ::cartographer::common::Time time,
@@ -136,6 +138,9 @@ int MapBuilderBridge::AddTrajectory(
 
   // Make sure there is no trajectory with 'trajectory_id' yet.
   CHECK_EQ(sensor_bridges_.count(trajectory_id), 0);
+  /// 构建传感器处理对象
+  /// GetTrajectoryBuilder会返回上述构建的slam系统
+  /// sensor_bridge作为内外消息传输的机制
   sensor_bridges_[trajectory_id] = absl::make_unique<SensorBridge>(
       trajectory_options.num_subdivisions_per_laser_scan,
       trajectory_options.ignore_out_of_order_messages,
@@ -216,6 +221,7 @@ cartographer_ros_msgs::SubmapList MapBuilderBridge::GetSubmapList() {
   cartographer_ros_msgs::SubmapList submap_list;
   submap_list.header.stamp = ::ros::Time::now();
   submap_list.header.frame_id = node_options_.map_frame;
+  /// 获取pgo中的所有submap 进行后续publish
   for (const auto& submap_id_pose :
        map_builder_->pose_graph()->GetAllSubmapPoses()) {
     cartographer_ros_msgs::SubmapEntry submap_entry;

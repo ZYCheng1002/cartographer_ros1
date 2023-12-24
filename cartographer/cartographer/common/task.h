@@ -33,18 +33,22 @@ class Task {
   friend class ThreadPoolInterface;
 
   using WorkItem = std::function<void()>;
+  ///@brief 热任务的状态
   enum State { NEW, DISPATCHED, DEPENDENCIES_COMPLETED, RUNNING, COMPLETED };
 
   Task() = default;
   ~Task();
 
+  ///@brief 返回任务状态
   State GetState() LOCKS_EXCLUDED(mutex_);
 
   // State must be 'NEW'.
+  ///@brief 设置任务
   void SetWorkItem(const WorkItem& work_item) LOCKS_EXCLUDED(mutex_);
 
   // State must be 'NEW'. 'dependency' may be nullptr, in which case it is
   // assumed completed.
+  ///@brief 依赖任务
   void AddDependency(std::weak_ptr<Task> dependency) LOCKS_EXCLUDED(mutex_);
 
  private:
@@ -61,11 +65,11 @@ class Task {
   // 'DEPENDENCIES_COMPLETED'.
   void OnDependenyCompleted();
 
-  WorkItem work_item_ GUARDED_BY(mutex_);
-  ThreadPoolInterface* thread_pool_to_notify_ GUARDED_BY(mutex_) = nullptr;
-  State state_ GUARDED_BY(mutex_) = NEW;
-  unsigned int uncompleted_dependencies_ GUARDED_BY(mutex_) = 0;
-  std::set<Task*> dependent_tasks_ GUARDED_BY(mutex_);
+  WorkItem work_item_ GUARDED_BY(mutex_);                                    /// function
+  ThreadPoolInterface* thread_pool_to_notify_ GUARDED_BY(mutex_) = nullptr;  /// 依赖完成,线程触发标志位
+  State state_ GUARDED_BY(mutex_) = NEW;                                     /// 任务状态
+  unsigned int uncompleted_dependencies_ GUARDED_BY(mutex_) = 0;             /// 依赖的任务数
+  std::set<Task*> dependent_tasks_ GUARDED_BY(mutex_);                       /// 其他的任务
 
   absl::Mutex mutex_;
 };

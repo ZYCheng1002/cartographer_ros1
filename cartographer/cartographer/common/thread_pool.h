@@ -56,6 +56,7 @@ class ThreadPoolInterface {
 // items to finish and then destroy the threads.
 class ThreadPool : public ThreadPoolInterface {
  public:
+  ///@brief 根据map_builder进行线程池初始化
   explicit ThreadPool(int num_threads);
   ~ThreadPool();
 
@@ -64,8 +65,8 @@ class ThreadPool : public ThreadPoolInterface {
 
   // When the returned weak pointer is expired, 'task' has certainly completed,
   // so dependants no longer need to add it as a dependency.
-  std::weak_ptr<Task> Schedule(std::unique_ptr<Task> task)
-      LOCKS_EXCLUDED(mutex_) override;
+  ///@brief 传入task，插入到未执行列队中
+  std::weak_ptr<Task> Schedule(std::unique_ptr<Task> task) LOCKS_EXCLUDED(mutex_) override;
 
  private:
   void DoWork();
@@ -73,11 +74,10 @@ class ThreadPool : public ThreadPoolInterface {
   void NotifyDependenciesCompleted(Task* task) LOCKS_EXCLUDED(mutex_) override;
 
   absl::Mutex mutex_;
-  bool running_ GUARDED_BY(mutex_) = true;
-  std::vector<std::thread> pool_ GUARDED_BY(mutex_);
-  std::deque<std::shared_ptr<Task>> task_queue_ GUARDED_BY(mutex_);
-  absl::flat_hash_map<Task*, std::shared_ptr<Task>> tasks_not_ready_
-      GUARDED_BY(mutex_);
+  bool running_ GUARDED_BY(mutex_) = true;                                               /// 运行标志位
+  std::vector<std::thread> pool_ GUARDED_BY(mutex_);                                     /// 存储多个线程
+  std::deque<std::shared_ptr<Task>> task_queue_ GUARDED_BY(mutex_);                      /// 任务列队
+  absl::flat_hash_map<Task*, std::shared_ptr<Task>> tasks_not_ready_ GUARDED_BY(mutex_); /// 等待的列队
 };
 
 }  // namespace common

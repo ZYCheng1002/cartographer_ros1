@@ -99,6 +99,7 @@ Node::Node(
   absl::MutexLock lock(&mutex_);
   if (collect_metrics) {
     /// 构建数据收集节点默认为false
+    /// todo: 比较复杂,后续再填坑
     metrics_registry_ = absl::make_unique<metrics::FamilyFactory>();
     carto::metrics::RegisterAllMetrics(metrics_registry_.get());
   }
@@ -143,6 +144,7 @@ Node::Node(
       node_handle_.advertise<sensor_msgs::PointCloud2>(
           kScanMatchedPointCloudTopic, kLatestOnlyPublisherQueueSize);
 
+  /// 定时pub submap list
   wall_timers_.push_back(node_handle_.createWallTimer(
       ::ros::WallDuration(node_options_.submap_publish_period_sec),
       &Node::PublishSubmapList, this));
@@ -407,8 +409,10 @@ Node::ComputeExpectedSensorIds(const TrajectoryOptions& options) const {
 int Node::AddTrajectory(const TrajectoryOptions& options) {
   const std::set<cartographer::mapping::TrajectoryBuilderInterface::SensorId>
       expected_sensor_ids = ComputeExpectedSensorIds(options);
+  /// 构建轨迹估计
   const int trajectory_id =
       map_builder_bridge_.AddTrajectory(expected_sensor_ids, options);
+  /// 位姿估计器?
   AddExtrapolator(trajectory_id, options);
   AddSensorSamplers(trajectory_id, options);
   LaunchSubscribers(options, trajectory_id);

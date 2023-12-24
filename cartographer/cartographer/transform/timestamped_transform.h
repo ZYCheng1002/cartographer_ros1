@@ -24,6 +24,7 @@
 namespace cartographer {
 namespace transform {
 
+///@struct 带有时间辍的T
 struct TimestampedTransform {
   common::Time time;
   transform::Rigid3d transform;
@@ -32,6 +33,7 @@ struct TimestampedTransform {
 TimestampedTransform FromProto(const proto::TimestampedTransform& proto);
 proto::TimestampedTransform ToProto(const TimestampedTransform& transform);
 
+///@brief T的插值
 TimestampedTransform Interpolate(const TimestampedTransform& start,
                                  const TimestampedTransform& end,
                                  const common::Time time);

@@ -20,6 +20,7 @@
 
 namespace cartographer_ros {
 
+///@brief 获取多个传感器的topic
 std::vector<std::string> ComputeRepeatedTopicNames(const std::string& topic,
                                                    const int num_topics) {
   CHECK_GE(num_topics, 0);

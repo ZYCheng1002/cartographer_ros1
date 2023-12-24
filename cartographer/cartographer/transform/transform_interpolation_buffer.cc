@@ -61,16 +61,20 @@ bool TransformInterpolationBuffer::Has(const common::Time time) const {
 transform::Rigid3d TransformInterpolationBuffer::Lookup(
     const common::Time time) const {
   CHECK(Has(time)) << "Missing transform for: " << time;
+  /// 在区间内找到第一个大于等于time的值
   const auto end = std::lower_bound(
       timestamped_transforms_.begin(), timestamped_transforms_.end(), time,
       [](const TimestampedTransform& timestamped_transform,
          const common::Time time) {
         return timestamped_transform.time < time;
       });
+  /// 如果时间就是刚好,没必要插值了
   if (end->time == time) {
     return end->transform;
   }
+  /// 利用迭代器返回上一个值,std::prev,std::next下一个
   const auto start = std::prev(end);
+  /// 插值
   return Interpolate(*start, *end, time).transform;
 }
 

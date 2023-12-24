@@ -30,7 +30,7 @@ namespace mapping {
 
 // Wires up the complete SLAM stack with TrajectoryBuilders (for local submaps)
 // and a PoseGraph for loop closure.
-///@brief slam建图系统
+///@class slam建图系统
 class MapBuilder : public MapBuilderInterface {
  public:
   explicit MapBuilder(const proto::MapBuilderOptions& options);
@@ -39,67 +39,54 @@ class MapBuilder : public MapBuilderInterface {
   MapBuilder(const MapBuilder&) = delete;
   MapBuilder& operator=(const MapBuilder&) = delete;
 
-  int AddTrajectoryBuilder(
-      const std::set<SensorId>& expected_sensor_ids,
-      const proto::TrajectoryBuilderOptions& trajectory_options,
-      LocalSlamResultCallback local_slam_result_callback) override;
+  int AddTrajectoryBuilder(const std::set<SensorId>& expected_sensor_ids,
+                           const proto::TrajectoryBuilderOptions& trajectory_options,
+                           LocalSlamResultCallback local_slam_result_callback) override;
 
   int AddTrajectoryForDeserialization(
-      const proto::TrajectoryBuilderOptionsWithSensorIds&
-          options_with_sensor_ids_proto) override;
+      const proto::TrajectoryBuilderOptionsWithSensorIds& options_with_sensor_ids_proto) override;
 
   void FinishTrajectory(int trajectory_id) override;
 
   ///@brief 将submap转换为proto进行外部信息交互
-  std::string SubmapToProto(const SubmapId& submap_id,
-                            proto::SubmapQuery::Response* response) override;
+  std::string SubmapToProto(const SubmapId& submap_id, proto::SubmapQuery::Response* response) override;
 
-  void SerializeState(bool include_unfinished_submaps,
-                      io::ProtoStreamWriterInterface* writer) override;
+  void SerializeState(bool include_unfinished_submaps, io::ProtoStreamWriterInterface* writer) override;
 
-  bool SerializeStateToFile(bool include_unfinished_submaps,
-                            const std::string& filename) override;
+  ///@brief pgo参数保存到文件中
+  bool SerializeStateToFile(bool include_unfinished_submaps, const std::string& filename) override;
 
-  std::map<int, int> LoadState(io::ProtoStreamReaderInterface* reader,
-                               bool load_frozen_state) override;
+  ///@brief 将pb stream加载到pgo中
+  std::map<int, int> LoadState(io::ProtoStreamReaderInterface* reader, bool load_frozen_state) override;
 
-  std::map<int, int> LoadStateFromFile(const std::string& filename,
-                                       const bool load_frozen_state) override;
+  ///@brief 加载离线的pb stream文件
+  std::map<int, int> LoadStateFromFile(const std::string& filename, const bool load_frozen_state) override;
 
-  mapping::PoseGraphInterface* pose_graph() override {
-    return pose_graph_.get();
-  }
+  mapping::PoseGraphInterface* pose_graph() override { return pose_graph_.get(); }
 
-  int num_trajectory_builders() const override {
-    return trajectory_builders_.size();
-  }
+  int num_trajectory_builders() const override { return trajectory_builders_.size(); }
 
-  mapping::TrajectoryBuilderInterface* GetTrajectoryBuilder(
-      int trajectory_id) const override {
+  mapping::TrajectoryBuilderInterface* GetTrajectoryBuilder(int trajectory_id) const override {
     return trajectory_builders_.at(trajectory_id).get();
   }
 
-  const std::vector<proto::TrajectoryBuilderOptionsWithSensorIds>&
-  GetAllTrajectoryBuilderOptions() const override {
+  const std::vector<proto::TrajectoryBuilderOptionsWithSensorIds>& GetAllTrajectoryBuilderOptions() const override {
     return all_trajectory_builder_options_;
   }
 
  private:
   const proto::MapBuilderOptions options_;
-  common::ThreadPool thread_pool_;
+  common::ThreadPool thread_pool_;  /// 线程池
 
-  std::unique_ptr<PoseGraph> pose_graph_;
+  std::unique_ptr<PoseGraph> pose_graph_;  /// 后端优化
 
   std::unique_ptr<sensor::CollatorInterface> sensor_collator_;
-  std::vector<std::unique_ptr<mapping::TrajectoryBuilderInterface>>
-      trajectory_builders_;  /// 保存slam系统(3d&2d),
-                             /// TrajectoryBuilderInterface是基类
-  std::vector<proto::TrajectoryBuilderOptionsWithSensorIds>
-      all_trajectory_builder_options_;
+  std::vector<std::unique_ptr<mapping::TrajectoryBuilderInterface>> trajectory_builders_;  /// 保存slam系统(3d&2d)
+  std::vector<proto::TrajectoryBuilderOptionsWithSensorIds> all_trajectory_builder_options_;
 };
 
-std::unique_ptr<MapBuilderInterface> CreateMapBuilder(
-    const proto::MapBuilderOptions& options);
+/// 全局函数,用于触发map_builder
+std::unique_ptr<MapBuilderInterface> CreateMapBuilder(const proto::MapBuilderOptions& options);
 
 }  // namespace mapping
 }  // namespace cartographer

@@ -40,6 +40,7 @@ class TransformInterpolationBuffer {
 
   // Sets the transform buffer size limit and removes old transforms
   // if it is exceeded.
+  ///@brief 设置存储数据的大小
   void SetSizeLimit(size_t buffer_size_limit);
 
   // Adds a new transform to the buffer and removes the oldest transform if the
@@ -50,10 +51,12 @@ class TransformInterpolationBuffer {
   void Clear();
 
   // Returns true if an interpolated transform can be computed at 'time'.
+  ///@brief 判断时间是否在范围内
   bool Has(common::Time time) const;
 
   // Returns an interpolated transform at 'time'. CHECK()s that a transform at
   // 'time' is available.
+  ///@brief 根据时间查找T并进行插值(有必要的话)
   transform::Rigid3d Lookup(common::Time time) const;
 
   // Returns the timestamp of the earliest transform in the buffer or 0 if the
@@ -76,8 +79,8 @@ class TransformInterpolationBuffer {
  private:
   void RemoveOldTransformsIfNeeded();
 
-  std::deque<TimestampedTransform> timestamped_transforms_;
-  size_t buffer_size_limit_ = kUnlimitedBufferSize;
+  std::deque<TimestampedTransform> timestamped_transforms_;  /// 存储T
+  size_t buffer_size_limit_ = kUnlimitedBufferSize;  /// 存储的空间,不指定就是最大
 };
 
 }  // namespace transform

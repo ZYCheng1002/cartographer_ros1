@@ -53,6 +53,9 @@ class MapBuilderBridge {
     // Contains the trajectory data received from local SLAM, after
     // it had processed accumulated 'range_data_in_local' and estimated
     // current 'local_pose' at 'time'.
+    /** 包含从本地SLAM接收的轨迹数据
+     *  在其处理了累积的“range_data_in_local”和在“time”估计的当前“local_pose”之后
+     */
     struct LocalSlamData {
       ::cartographer::common::Time time;
       ::cartographer::transform::Rigid3d local_pose;
@@ -93,6 +96,8 @@ class MapBuilderBridge {
   std::map<int /* trajectory_id */,
            ::cartographer::mapping::PoseGraphInterface::TrajectoryState>
   GetTrajectoryStates();
+
+  ///@brief 获取submap list
   cartographer_ros_msgs::SubmapList GetSubmapList();
   std::unordered_map<int, LocalTrajectoryData> GetLocalTrajectoryData()
       LOCKS_EXCLUDED(mutex_);

@@ -32,6 +32,7 @@ TimestampedTransform Interpolate(const TimestampedTransform& start,
   const Eigen::Vector3d origin =
       start.transform.translation() +
       (end.transform.translation() - start.transform.translation()) * factor;
+  /// 使用的四元数插值
   const Eigen::Quaterniond rotation =
       Eigen::Quaterniond(start.transform.rotation())
           .slerp(factor, Eigen::Quaterniond(end.transform.rotation()));

@@ -30,7 +30,10 @@
 namespace cartographer {
 namespace common {
 
-void ThreadPoolInterface::Execute(Task* task) { task->Execute(); }
+void ThreadPoolInterface::Execute(Task* task) {
+  /// 每个任务都需要有该成员函数
+  task->Execute();
+}
 
 void ThreadPoolInterface::SetThreadPool(Task* task) {
   task->SetThreadPool(this);
@@ -50,6 +53,7 @@ ThreadPool::~ThreadPool() {
     CHECK(running_);
     running_ = false;
   }
+  /// 等待线程结束
   for (std::thread& thread : pool_) {
     thread.join();
   }
@@ -90,6 +94,7 @@ void ThreadPool::DoWork() {
     std::shared_ptr<Task> task;
     {
       absl::MutexLock locker(&mutex_);
+      /// 有任务数才会进入下一级,否则等待
       mutex_.Await(absl::Condition(&predicate));
       if (!task_queue_.empty()) {
         task = std::move(task_queue_.front());
@@ -100,6 +105,7 @@ void ThreadPool::DoWork() {
     }
     CHECK(task);
     CHECK_EQ(task->GetState(), common::Task::DEPENDENCIES_COMPLETED);
+    /// 任务执行
     Execute(task.get());
   }
 }

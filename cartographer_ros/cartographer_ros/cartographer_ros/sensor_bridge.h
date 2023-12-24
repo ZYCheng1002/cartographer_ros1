@@ -102,7 +102,7 @@ class SensorBridge {
   std::map<std::string, cartographer::common::Time> latest_sensor_time_;
   const TfBridge tf_bridge_;  /// 获取各个tf之间的转换关系
   ::cartographer::mapping::TrajectoryBuilderInterface* const
-      trajectory_builder_;
+      trajectory_builder_;  /// 由外部根据id传进来的,也就是构建的slam系统
 
   absl::optional<::cartographer::transform::Rigid3d> ecef_to_local_frame_;
 };

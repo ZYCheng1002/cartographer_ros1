@@ -320,6 +320,7 @@ geometry_msgs::Transform ToGeometryMsgTransform(const Rigid3d& rigid3d) {
   return transform;
 }
 
+///@brief rigid T转geometry msgs Pose
 geometry_msgs::Pose ToGeometryMsgPose(const Rigid3d& rigid3d) {
   geometry_msgs::Pose pose;
   pose.position = ToGeometryMsgPoint(rigid3d.translation());

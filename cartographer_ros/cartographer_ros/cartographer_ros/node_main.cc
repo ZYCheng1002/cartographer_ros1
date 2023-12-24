@@ -60,11 +60,13 @@ void Run() {
       cartographer::mapping::CreateMapBuilder(node_options.map_builder_options);  /// 会生成pose graph节点
   Node node(node_options, std::move(map_builder), &tf_buffer,
             FLAGS_collect_metrics);
+  /// 加载之前保存的地图/轨迹数据等
   if (!FLAGS_load_state_filename.empty()) {
     node.LoadState(FLAGS_load_state_filename, FLAGS_load_frozen_state);
   }
 
   if (FLAGS_start_trajectory_with_default_topics) {
+    /// 以默认参数启动
     node.StartTrajectoryWithDefaultTopics(trajectory_options);
   }
 

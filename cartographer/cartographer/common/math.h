@@ -71,6 +71,7 @@ T atan2(const Eigen::Matrix<T, 2, 1>& vector) {
   return ceres::atan2(vector.y(), vector.x());
 }
 
+///@brief 四元数乘
 template <typename T>
 inline void QuaternionProduct(const double* const z, const T* const w,
                               T* const zw) {

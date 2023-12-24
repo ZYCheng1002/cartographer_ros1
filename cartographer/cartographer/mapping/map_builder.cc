@@ -86,6 +86,7 @@ MapBuilder::MapBuilder(const proto::MapBuilderOptions& options)
             options_.pose_graph_options().optimization_problem_options()),
         &thread_pool_);
   }
+  /// 构建3d pgo节点
   if (options.use_trajectory_builder_3d()) {
     pose_graph_ = absl::make_unique<PoseGraph3D>(
         options_.pose_graph_options(),
@@ -93,6 +94,7 @@ MapBuilder::MapBuilder(const proto::MapBuilderOptions& options)
             options_.pose_graph_options().optimization_problem_options()),
         &thread_pool_);
   }
+  /// 构建传感器数据收集器
   if (options.collate_by_trajectory()) {
     sensor_collator_ = absl::make_unique<sensor::TrajectoryCollator>();
   } else {
@@ -220,6 +222,7 @@ bool MapBuilder::SerializeStateToFile(bool include_unfinished_submaps,
 
 std::map<int, int> MapBuilder::LoadState(
     io::ProtoStreamReaderInterface* const reader, bool load_frozen_state) {
+  ///@note 比较实用,地图扩展||离线建图应该用的上
   io::ProtoStreamDeserializer deserializer(reader);
 
   // Create a copy of the pose_graph_proto, such that we can re-write the

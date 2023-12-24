@@ -56,6 +56,7 @@ namespace cartographer_ros {
 // Wires up ROS topics to SLAM.
 class Node {
  public:
+  ///@param map_builder 已经构造的建图节点
   Node(const NodeOptions& node_options,
        std::unique_ptr<cartographer::mapping::MapBuilderInterface> map_builder,
        tf2_ros::Buffer* tf_buffer, bool collect_metrics);
@@ -155,8 +156,13 @@ class Node {
   std::set<::cartographer::mapping::TrajectoryBuilderInterface::SensorId>
   ComputeExpectedSensorIds(const TrajectoryOptions& options) const;
   int AddTrajectory(const TrajectoryOptions& options);
+
+  /// @brief 订阅传感器数据
   void LaunchSubscribers(const TrajectoryOptions& options, int trajectory_id);
+
+  /// @brief 发布建图数据
   void PublishSubmapList(const ::ros::WallTimerEvent& timer_event);
+
   void AddExtrapolator(int trajectory_id, const TrajectoryOptions& options);
   void AddSensorSamplers(int trajectory_id, const TrajectoryOptions& options);
   void PublishLocalTrajectoryData(const ::ros::TimerEvent& timer_event);
@@ -181,6 +187,8 @@ class Node {
 
   absl::Mutex mutex_;
   std::unique_ptr<cartographer_ros::metrics::FamilyFactory> metrics_registry_;
+  /// 解释GUARDED_BY:声明数据成员受给定功能保护。对数据的读取操作需要共享访问，而写入操作需要独占访问。
+  /// 编译中检查这个成员函数是否按照这样执行,如果没有则报错
   MapBuilderBridge map_builder_bridge_ GUARDED_BY(mutex_);
 
   ::ros::NodeHandle node_handle_;
