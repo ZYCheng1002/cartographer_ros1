@@ -27,27 +27,32 @@ namespace mapping {
 // accelerations from an IMU. Because averaged linear acceleration (assuming
 // slow movement) is a direct measurement of gravity, roll/pitch does not drift,
 // though yaw does.
+///@class 根据IMU减速度进行姿态预测
 class ImuTracker {
  public:
   ImuTracker(double imu_gravity_time_constant, common::Time time);
 
   // Advances to the given 'time' and updates the orientation to reflect this.
+  ///@brief 给定时间进行姿态预测
   void Advance(common::Time time);
 
   // Updates from an IMU reading (in the IMU frame).
-  void AddImuLinearAccelerationObservation(
-      const Eigen::Vector3d& imu_linear_acceleration);
-  void AddImuAngularVelocityObservation(
-      const Eigen::Vector3d& imu_angular_velocity);
+  ///@brief 增加加速度
+  void AddImuLinearAccelerationObservation(const Eigen::Vector3d& imu_linear_acceleration);
+
+  ///@brief 增加角速度
+  void AddImuAngularVelocityObservation(const Eigen::Vector3d& imu_angular_velocity);
 
   // Query the current time.
+  ///@brief 查询当前时间戳
   common::Time time() const { return time_; }
 
   // Query the current orientation estimate.
+  ///@brief 查询当前的姿态
   Eigen::Quaterniond orientation() const { return orientation_; }
 
  private:
-  const double imu_gravity_time_constant_;
+  const double imu_gravity_time_constant_;  /// 重力加速度值
   common::Time time_;
   common::Time last_linear_acceleration_time_;
   Eigen::Quaterniond orientation_;
