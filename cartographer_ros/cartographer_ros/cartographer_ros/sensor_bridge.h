@@ -42,67 +42,50 @@ namespace cartographer_ros {
 // Converts ROS messages into SensorData in tracking frame for the MapBuilder.
 class SensorBridge {
  public:
-  explicit SensorBridge(
-      int num_subdivisions_per_laser_scan, bool ignore_out_of_order_messages,
-      const std::string& tracking_frame, double lookup_transform_timeout_sec,
-      tf2_ros::Buffer* tf_buffer,
-      ::cartographer::mapping::TrajectoryBuilderInterface* trajectory_builder);
+  explicit SensorBridge(int num_subdivisions_per_laser_scan, bool ignore_out_of_order_messages,
+                        const std::string& tracking_frame, double lookup_transform_timeout_sec,
+                        tf2_ros::Buffer* tf_buffer,
+                        ::cartographer::mapping::TrajectoryBuilderInterface* trajectory_builder);
 
   SensorBridge(const SensorBridge&) = delete;
   SensorBridge& operator=(const SensorBridge&) = delete;
 
-  std::unique_ptr<::cartographer::sensor::OdometryData> ToOdometryData(
-      const nav_msgs::Odometry::ConstPtr& msg);
-  void HandleOdometryMessage(const std::string& sensor_id,
-                             const nav_msgs::Odometry::ConstPtr& msg);
-  void HandleNavSatFixMessage(const std::string& sensor_id,
-                              const sensor_msgs::NavSatFix::ConstPtr& msg);
-  void HandleLandmarkMessage(
-      const std::string& sensor_id,
-      const cartographer_ros_msgs::LandmarkList::ConstPtr& msg);
+  std::unique_ptr<::cartographer::sensor::OdometryData> ToOdometryData(const nav_msgs::Odometry::ConstPtr& msg);
+  void HandleOdometryMessage(const std::string& sensor_id, const nav_msgs::Odometry::ConstPtr& msg);
+  void HandleNavSatFixMessage(const std::string& sensor_id, const sensor_msgs::NavSatFix::ConstPtr& msg);
+  void HandleLandmarkMessage(const std::string& sensor_id, const cartographer_ros_msgs::LandmarkList::ConstPtr& msg);
 
-  std::unique_ptr<::cartographer::sensor::ImuData> ToImuData(
-      const sensor_msgs::Imu::ConstPtr& msg);
+  std::unique_ptr<::cartographer::sensor::ImuData> ToImuData(const sensor_msgs::Imu::ConstPtr& msg);
 
   /// @brief ros格式的imu数据转换成cartographer内部数据
-  void HandleImuMessage(const std::string& sensor_id,
-                        const sensor_msgs::Imu::ConstPtr& msg);
+  void HandleImuMessage(const std::string& sensor_id, const sensor_msgs::Imu::ConstPtr& msg);
 
   /// @brief laserScan转内部数据
-  void HandleLaserScanMessage(const std::string& sensor_id,
-                              const sensor_msgs::LaserScan::ConstPtr& msg);
+  void HandleLaserScanMessage(const std::string& sensor_id, const sensor_msgs::LaserScan::ConstPtr& msg);
 
   /// @brief MultiEcho转内部数据
-  void HandleMultiEchoLaserScanMessage(
-      const std::string& sensor_id,
-      const sensor_msgs::MultiEchoLaserScan::ConstPtr& msg);
+  void HandleMultiEchoLaserScanMessage(const std::string& sensor_id,
+                                       const sensor_msgs::MultiEchoLaserScan::ConstPtr& msg);
 
   /// @brief PointCloud2转内部数据
-  void HandlePointCloud2Message(const std::string& sensor_id,
-                                const sensor_msgs::PointCloud2::ConstPtr& msg);
+  void HandlePointCloud2Message(const std::string& sensor_id, const sensor_msgs::PointCloud2::ConstPtr& msg);
 
   const TfBridge& tf_bridge() const;
-  bool IgnoreMessage(const std::string& sensor_id,
-                     ::cartographer::common::Time sensor_time);
+  bool IgnoreMessage(const std::string& sensor_id, ::cartographer::common::Time sensor_time);
 
  private:
-  void HandleLaserScan(
-      const std::string& sensor_id, ::cartographer::common::Time start_time,
-      const std::string& frame_id,
-      const ::cartographer::sensor::PointCloudWithIntensities& points);
-  void HandleRangefinder(const std::string& sensor_id,
-                         ::cartographer::common::Time time,
-                         const std::string& frame_id,
+  void HandleLaserScan(const std::string& sensor_id, ::cartographer::common::Time start_time,
+                       const std::string& frame_id, const ::cartographer::sensor::PointCloudWithIntensities& points);
+  void HandleRangefinder(const std::string& sensor_id, ::cartographer::common::Time time, const std::string& frame_id,
                          const ::cartographer::sensor::TimedPointCloud& ranges);
 
   const int num_subdivisions_per_laser_scan_;
   const bool ignore_out_of_order_messages_;
-  std::map<std::string, cartographer::common::Time>
-      sensor_to_previous_subdivision_time_;
+  std::map<std::string, cartographer::common::Time> sensor_to_previous_subdivision_time_;
   std::map<std::string, cartographer::common::Time> latest_sensor_time_;
   const TfBridge tf_bridge_;  /// 获取各个tf之间的转换关系
   ::cartographer::mapping::TrajectoryBuilderInterface* const
-      trajectory_builder_;  /// 由外部根据id传进来的,也就是构建的slam系统
+      trajectory_builder_;  /// 由外部根据id传进来的,也就是构建的slam系统,最外层是CollatedTrajectory
 
   absl::optional<::cartographer::transform::Rigid3d> ecef_to_local_frame_;
 };

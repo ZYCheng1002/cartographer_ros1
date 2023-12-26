@@ -35,14 +35,10 @@ DEFINE_string(configuration_basename, "",
 DEFINE_string(load_state_filename, "",
               "If non-empty, filename of a .pbstream file to load, containing "
               "a saved SLAM state.");
-DEFINE_bool(load_frozen_state, true,
-            "Load the saved state as frozen (non-optimized) trajectories.");
-DEFINE_bool(
-    start_trajectory_with_default_topics, true,
-    "Enable to immediately start the first trajectory with default topics.");
-DEFINE_string(
-    save_state_filename, "",
-    "If non-empty, serialize state and write it to disk before shutting down.");
+DEFINE_bool(load_frozen_state, true, "Load the saved state as frozen (non-optimized) trajectories.");
+DEFINE_bool(start_trajectory_with_default_topics, true,
+            "Enable to immediately start the first trajectory with default topics.");
+DEFINE_string(save_state_filename, "", "If non-empty, serialize state and write it to disk before shutting down.");
 
 namespace cartographer_ros {
 namespace {
@@ -53,13 +49,11 @@ void Run() {
   tf2_ros::TransformListener tf(tf_buffer);
   NodeOptions node_options;
   TrajectoryOptions trajectory_options;
-  std::tie(node_options, trajectory_options) =
-      LoadOptions(FLAGS_configuration_directory, FLAGS_configuration_basename);
+  std::tie(node_options, trajectory_options) = LoadOptions(FLAGS_configuration_directory, FLAGS_configuration_basename);
 
   auto map_builder =
       cartographer::mapping::CreateMapBuilder(node_options.map_builder_options);  /// 会生成pose graph节点
-  Node node(node_options, std::move(map_builder), &tf_buffer,
-            FLAGS_collect_metrics);
+  Node node(node_options, std::move(map_builder), &tf_buffer, FLAGS_collect_metrics);
   /// 加载之前保存的地图/轨迹数据等
   if (!FLAGS_load_state_filename.empty()) {
     node.LoadState(FLAGS_load_state_filename, FLAGS_load_frozen_state);
@@ -69,15 +63,14 @@ void Run() {
     /// 以默认参数启动
     node.StartTrajectoryWithDefaultTopics(trajectory_options);
   }
-
+  /// 订阅完成，这里系统进行建图
   ::ros::spin();
 
   node.FinishAllTrajectories();
   node.RunFinalOptimization();
 
   if (!FLAGS_save_state_filename.empty()) {
-    node.SerializeState(FLAGS_save_state_filename,
-                        true /* include_unfinished_submaps */);
+    node.SerializeState(FLAGS_save_state_filename, true /* include_unfinished_submaps */);
   }
 }
 
@@ -88,10 +81,8 @@ int main(int argc, char** argv) {
   google::InitGoogleLogging(argv[0]);
   google::ParseCommandLineFlags(&argc, &argv, true);
 
-  CHECK(!FLAGS_configuration_directory.empty())
-      << "-configuration_directory is missing.";
-  CHECK(!FLAGS_configuration_basename.empty())
-      << "-configuration_basename is missing.";
+  CHECK(!FLAGS_configuration_directory.empty()) << "-configuration_directory is missing.";
+  CHECK(!FLAGS_configuration_basename.empty()) << "-configuration_basename is missing.";
 
   ::ros::init(argc, argv, "cartographer_node");
   ::ros::start();

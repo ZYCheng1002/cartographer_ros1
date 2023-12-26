@@ -38,6 +38,7 @@ class MotionFilter {
   // If the accumulated motion (linear, rotational, or time) is above the
   // threshold, returns false. Otherwise the relative motion is accumulated and
   // true is returned.
+  ///@brief 判断pose的变化大小进行过滤
   bool IsSimilar(common::Time time, const transform::Rigid3d& pose);
 
  private:

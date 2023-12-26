@@ -414,7 +414,9 @@ int Node::AddTrajectory(const TrajectoryOptions& options) {
       map_builder_bridge_.AddTrajectory(expected_sensor_ids, options);
   /// 位姿估计器?
   AddExtrapolator(trajectory_id, options);
+  /// 传感器数据采样
   AddSensorSamplers(trajectory_id, options);
+  /// 订阅消息
   LaunchSubscribers(options, trajectory_id);
   wall_timers_.push_back(node_handle_.createWallTimer(
       ::ros::WallDuration(kTopicMismatchCheckDelaySec),
