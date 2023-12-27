@@ -58,6 +58,7 @@ inline uint8 ProbabilityToLogOddsInteger(const float probability) {
 // closing.
 class Submap {
  public:
+  ///@brief 构造时需要local_pose
   Submap(const transform::Rigid3d& local_submap_pose)
       : local_pose_(local_submap_pose) {}
   virtual ~Submap() {}
@@ -71,10 +72,13 @@ class Submap {
       proto::SubmapQuery::Response* response) const = 0;
 
   // Pose of this submap in the local map frame.
+  ///@brief 当前submap的pose
   transform::Rigid3d local_pose() const { return local_pose_; }
 
   // Number of RangeData inserted.
   int num_range_data() const { return num_range_data_; }
+
+  ///@brief设置容量
   void set_num_range_data(const int num_range_data) {
     num_range_data_ = num_range_data;
   }

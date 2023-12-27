@@ -62,7 +62,7 @@ class Submap2D : public Submap {
   void Finish();
 
  private:
-  std::unique_ptr<Grid2D> grid_;
+  std::unique_ptr<Grid2D> grid_;  /// 栅格地图
   ValueConversionTables* conversion_tables_;
 };
 

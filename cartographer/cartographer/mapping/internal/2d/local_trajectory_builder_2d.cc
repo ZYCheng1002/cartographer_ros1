@@ -117,11 +117,13 @@ std::unique_ptr<LocalTrajectoryBuilder2D::MatchingResult> LocalTrajectoryBuilder
     return nullptr;
   }
 
+  /// 用于存储每个点的pose
   std::vector<transform::Rigid3f> range_data_poses;
   range_data_poses.reserve(synchronized_data.ranges.size());
   bool warned = false;
   for (const auto& range : synchronized_data.ranges) {
     common::Time time_point = time + common::FromSeconds(range.point_time.time);
+    /// 该点的时间如果比上一个位姿递推的时间小,判为非法
     if (time_point < extrapolator_->GetLastExtrapolatedTime()) {
       if (!warned) {
         LOG(ERROR) << "Timestamp of individual range data point jumps backwards from "
@@ -130,7 +132,7 @@ std::unique_ptr<LocalTrajectoryBuilder2D::MatchingResult> LocalTrajectoryBuilder
       }
       time_point = extrapolator_->GetLastExtrapolatedTime();
     }
-    /// 每个点分配位姿
+    /// 每个点分配位姿(这里的位姿是预测来的)
     range_data_poses.push_back(extrapolator_->ExtrapolatePose(time_point).cast<float>());
   }
 

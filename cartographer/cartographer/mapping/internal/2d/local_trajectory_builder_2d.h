@@ -87,6 +87,8 @@ class LocalTrajectoryBuilder2D {
                                                           const absl::optional<common::Duration>& sensor_duration);
   sensor::RangeData TransformToGravityAlignedFrameAndFilter(
       const transform::Rigid3f& transform_to_gravity_aligned_frame, const sensor::RangeData& range_data) const;
+
+  ///@brief 将匹配后的结果插入到submap
   std::unique_ptr<InsertionResult> InsertIntoSubmap(common::Time time, const sensor::RangeData& range_data_in_local,
                                                     const sensor::PointCloud& filtered_gravity_aligned_point_cloud,
                                                     const transform::Rigid3d& pose_estimate,

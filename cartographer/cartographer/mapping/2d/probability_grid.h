@@ -28,6 +28,7 @@ namespace cartographer {
 namespace mapping {
 
 // Represents a 2D grid of probabilities.
+///@class 2D概率地图
 class ProbabilityGrid : public Grid2D {
  public:
   explicit ProbabilityGrid(const MapLimits& limits,
