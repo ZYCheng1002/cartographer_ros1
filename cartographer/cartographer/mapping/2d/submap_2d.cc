@@ -194,6 +194,7 @@ void ActiveSubmaps2D::AddSubmap(const Eigen::Vector2f& origin) {
     CHECK(submaps_.front()->insertion_finished());
     submaps_.erase(submaps_.begin());
   }
+  /// 新建一个新的submap
   submaps_.push_back(absl::make_unique<Submap2D>(
       origin, std::unique_ptr<Grid2D>(static_cast<Grid2D*>(CreateGrid(origin).release())), &conversion_tables_));
 }

@@ -47,8 +47,10 @@ LocalTrajectoryBuilder2D::~LocalTrajectoryBuilder2D() {}
 
 sensor::RangeData LocalTrajectoryBuilder2D::TransformToGravityAlignedFrameAndFilter(
     const transform::Rigid3f& transform_to_gravity_aligned_frame, const sensor::RangeData& range_data) const {
+  /// 剔外点
   const sensor::RangeData cropped = sensor::CropRangeData(
       sensor::TransformRangeData(range_data, transform_to_gravity_aligned_frame), options_.min_z(), options_.max_z());
+  /// 体素滤波
   return sensor::RangeData{cropped.origin, sensor::VoxelFilter(cropped.returns, options_.voxel_filter_size()),
                            sensor::VoxelFilter(cropped.misses, options_.voxel_filter_size())};
 }
@@ -65,6 +67,7 @@ std::unique_ptr<transform::Rigid2d> LocalTrajectoryBuilder2D::ScanMatch(
   transform::Rigid2d initial_ceres_pose = pose_prediction;
 
   if (options_.use_online_correlative_scan_matching()) {
+    /// 如果使用实时匹配,在此处会更改init_pose
     const double score = real_time_correlative_scan_matcher_.Match(
         pose_prediction, filtered_gravity_aligned_point_cloud, *matching_submap->grid(), &initial_ceres_pose);
     kRealTimeCorrelativeScanMatcherScoreMetric->Observe(score);
@@ -72,8 +75,10 @@ std::unique_ptr<transform::Rigid2d> LocalTrajectoryBuilder2D::ScanMatch(
 
   auto pose_observation = absl::make_unique<transform::Rigid2d>();
   ceres::Solver::Summary summary;
+  /// 匹配
   ceres_scan_matcher_.Match(pose_prediction.translation(), initial_ceres_pose, filtered_gravity_aligned_point_cloud,
                             *matching_submap->grid(), pose_observation.get(), &summary);
+  /// 匹配结果和cost等
   if (pose_observation) {
     kCeresScanMatcherCostMetric->Observe(summary.final_cost);
     const double residual_distance = (pose_observation->translation() - pose_prediction.translation()).norm();
@@ -117,7 +122,7 @@ std::unique_ptr<LocalTrajectoryBuilder2D::MatchingResult> LocalTrajectoryBuilder
     return nullptr;
   }
 
-  /// 用于存储每个点的pose
+  /// 用于存储雷达坐标的pose
   std::vector<transform::Rigid3f> range_data_poses;
   range_data_poses.reserve(synchronized_data.ranges.size());
   bool warned = false;
@@ -145,16 +150,22 @@ std::unique_ptr<LocalTrajectoryBuilder2D::MatchingResult> LocalTrajectoryBuilder
   // Drop any returns below the minimum range and convert returns beyond the
   // maximum range into misses.
   for (size_t i = 0; i < synchronized_data.ranges.size(); ++i) {
+    /// 或者这个点和这个点在雷达坐标系下的坐标
     const sensor::TimedRangefinderPoint& hit = synchronized_data.ranges[i].point_time;
+    /// 雷达在local坐标系的位置(这个位置是按照每个点的时间来的,所以也就做了运动补偿)
     const Eigen::Vector3f origin_in_local =
         range_data_poses[i] * synchronized_data.origins.at(synchronized_data.ranges[i].origin_index);
+    /// 将lidar坐标系转到local坐标系
     sensor::RangefinderPoint hit_in_local = range_data_poses[i] * sensor::ToRangefinderPoint(hit);
+    /// 点的坐标-雷达坐标,在norm也就是点到雷达的距离
     const Eigen::Vector3f delta = hit_in_local.position - origin_in_local;
     const float range = delta.norm();
     if (range >= options_.min_range()) {
       if (range <= options_.max_range()) {
+        /// 有效点加入到点云中
         accumulated_range_data_.returns.push_back(hit_in_local);
       } else {
+        /// 非法点加入到非法点集合中
         hit_in_local.position = origin_in_local + options_.missing_data_ray_length() / range * delta;
         accumulated_range_data_.misses.push_back(hit_in_local);
       }
@@ -163,12 +174,14 @@ std::unique_ptr<LocalTrajectoryBuilder2D::MatchingResult> LocalTrajectoryBuilder
   ++num_accumulated_;
 
   if (num_accumulated_ >= options_.num_accumulated_range_data()) {
+    /// 累积到了阈值,进行match
     const common::Time current_sensor_time = synchronized_data.time;
-    absl::optional<common::Duration> sensor_duration;
+    absl::optional<common::Duration> sensor_duration;   /// 每一帧占据的时间
     if (last_sensor_time_.has_value()) {
       sensor_duration = current_sensor_time - last_sensor_time_.value();
     }
     last_sensor_time_ = current_sensor_time;
+    /// 重置,等着下一次累积
     num_accumulated_ = 0;
     const transform::Rigid3d gravity_alignment =
         transform::Rigid3d::Rotation(extrapolator_->EstimateGravityOrientation(time));

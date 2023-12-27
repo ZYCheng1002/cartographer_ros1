@@ -113,7 +113,7 @@ class LocalTrajectoryBuilder2D {
   std::unique_ptr<PoseExtrapolator> extrapolator_;  /// 位姿递推器
 
   int num_accumulated_ = 0;
-  sensor::RangeData accumulated_range_data_;  /// 过滤与否的数据
+  sensor::RangeData accumulated_range_data_;  /// 过滤与否的数据(累积好几帧进行匹配)
 
   absl::optional<std::chrono::steady_clock::time_point> last_wall_time_;
   absl::optional<double> last_thread_cpu_time_seconds_;

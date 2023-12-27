@@ -90,6 +90,7 @@ class ActiveSubmaps2D {
   std::vector<std::shared_ptr<const Submap2D>> submaps() const;
 
  private:
+  /// 栅格地图生成
   std::unique_ptr<RangeDataInserterInterface> CreateRangeDataInserter();
   std::unique_ptr<GridInterface> CreateGrid(const Eigen::Vector2f& origin);
   void FinishSubmap();
