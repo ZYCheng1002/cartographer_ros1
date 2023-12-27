@@ -37,6 +37,7 @@ class Collator : public CollatorInterface {
   Collator(const Collator&) = delete;
   Collator& operator=(const Collator&) = delete;
 
+  ///@brief callback数据处理的回调函数
   void AddTrajectory(
       int trajectory_id,
       const absl::flat_hash_set<std::string>& expected_sensor_ids,
@@ -52,7 +53,7 @@ class Collator : public CollatorInterface {
 
  private:
   // Queue keys are a pair of trajectory ID and sensor identifier.
-  OrderedMultiQueue queue_;
+  OrderedMultiQueue queue_;  /// 保存trajectory id和传感器标识符,针对性保存了回调函数
 
   // Map of trajectory ID to all associated QueueKeys.
   absl::flat_hash_map<int, std::vector<QueueKey>> queue_keys_;

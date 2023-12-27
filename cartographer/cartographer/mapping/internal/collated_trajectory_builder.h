@@ -50,18 +50,22 @@ class CollatedTrajectoryBuilder : public TrajectoryBuilderInterface {
   CollatedTrajectoryBuilder(const CollatedTrajectoryBuilder&) = delete;
   CollatedTrajectoryBuilder& operator=(const CollatedTrajectoryBuilder&) = delete;
 
+  ///@brief 点云数据
   void AddSensorData(const std::string& sensor_id, const sensor::TimedPointCloudData& timed_point_cloud_data) override {
     AddData(sensor::MakeDispatchable(sensor_id, timed_point_cloud_data));
   }
 
+  ///@brief IMU数据
   void AddSensorData(const std::string& sensor_id, const sensor::ImuData& imu_data) override {
     AddData(sensor::MakeDispatchable(sensor_id, imu_data));
   }
 
+  ///@brief odom数据
   void AddSensorData(const std::string& sensor_id, const sensor::OdometryData& odometry_data) override {
     AddData(sensor::MakeDispatchable(sensor_id, odometry_data));
   }
 
+  ///@brief fixed pose
   void AddSensorData(const std::string& sensor_id, const sensor::FixedFramePoseData& fixed_frame_pose_data) override {
     if (collate_fixed_frame_) {
       AddData(sensor::MakeDispatchable(sensor_id, fixed_frame_pose_data));
@@ -70,6 +74,7 @@ class CollatedTrajectoryBuilder : public TrajectoryBuilderInterface {
     wrapped_trajectory_builder_->AddSensorData(sensor_id, fixed_frame_pose_data);
   }
 
+  ///@brief landmark
   void AddSensorData(const std::string& sensor_id, const sensor::LandmarkData& landmark_data) override {
     if (collate_landmarks_) {
       AddData(sensor::MakeDispatchable(sensor_id, landmark_data));
@@ -78,6 +83,7 @@ class CollatedTrajectoryBuilder : public TrajectoryBuilderInterface {
     wrapped_trajectory_builder_->AddSensorData(sensor_id, landmark_data);
   }
 
+  ///@brief 前端里程计数据
   void AddLocalSlamResultData(std::unique_ptr<mapping::LocalSlamResultData> local_slam_result_data) override {
     AddData(std::move(local_slam_result_data));
   }
@@ -86,13 +92,14 @@ class CollatedTrajectoryBuilder : public TrajectoryBuilderInterface {
   ///@brief 数据处理接口,外部数据进入的第一道防线
   void AddData(std::unique_ptr<sensor::Data> data);
 
+  ///@brief sensor_collator_用的都是这个function
   void HandleCollatedSensorData(const std::string& sensor_id, std::unique_ptr<sensor::Data> data);
 
   sensor::CollatorInterface* const sensor_collator_;
   const bool collate_landmarks_;
   const bool collate_fixed_frame_;
   const int trajectory_id_;
-  std::unique_ptr<TrajectoryBuilderInterface> wrapped_trajectory_builder_;
+  std::unique_ptr<TrajectoryBuilderInterface> wrapped_trajectory_builder_;  /// 带后端的那个slam系统
 
   // Time at which we last logged the rates of incoming sensor data.
   std::chrono::steady_clock::time_point last_logging_time_;

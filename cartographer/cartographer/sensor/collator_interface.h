@@ -28,6 +28,7 @@
 namespace cartographer {
 namespace sensor {
 
+///@class 数据采集的基类
 class CollatorInterface {
  public:
   using Callback =

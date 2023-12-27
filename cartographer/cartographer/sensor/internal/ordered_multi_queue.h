@@ -31,6 +31,7 @@
 namespace cartographer {
 namespace sensor {
 
+///@struct 某个trajectory中的sensor
 struct QueueKey {
   int trajectory_id;
   std::string sensor_id;
@@ -48,6 +49,7 @@ struct QueueKey {
 // This class is thread-compatible.
 class OrderedMultiQueue {
  public:
+  /// 以Data(基类)为输入的function
   using Callback = std::function<void(std::unique_ptr<Data>)>;
 
   OrderedMultiQueue();
@@ -65,10 +67,12 @@ class OrderedMultiQueue {
 
   // Adds 'data' to a queue with the given 'queue_key'. Data must be added
   // sorted per queue.
+  ///@brief 增加数据
   void Add(const QueueKey& queue_key, std::unique_ptr<Data> data);
 
   // Dispatches all remaining values in sorted order and removes the underlying
   // queues.
+  ///@brief 按顺序进行数据调度
   void Flush();
 
   // Must only be called if at least one unfinished queue exists. Returns the
@@ -78,12 +82,14 @@ class OrderedMultiQueue {
 
  private:
   struct Queue {
-    common::BlockingQueue<std::unique_ptr<Data>> queue;
-    Callback callback;
+    common::BlockingQueue<std::unique_ptr<Data>> queue;  /// 存储data的对线程安全的列队
+    Callback callback;                                   /// 回调函数
     bool finished = false;
   };
 
+  ///@brief 将数据队列中的数据传到callback
   void Dispatch();
+
   void CannotMakeProgress(const QueueKey& queue_key);
   common::Time GetCommonStartTime(int trajectory_id);
 
@@ -91,7 +97,7 @@ class OrderedMultiQueue {
   common::Time last_dispatched_time_ = common::Time::min();
 
   std::map<int, common::Time> common_start_time_per_trajectory_;
-  std::map<QueueKey, Queue> queues_;
+  std::map<QueueKey, Queue> queues_;  /// 保存trajectory id的sensor id的callback
   QueueKey blocker_;
 };
 

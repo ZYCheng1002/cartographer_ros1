@@ -45,7 +45,7 @@ class LocalSlamResultData;
 // global SLAM stack, i.e. local SLAM for initial pose estimates, scan matching
 // to detect loop closure, and a sparse pose graph optimization to compute
 // optimized pose estimates.
-///@class 三个轨迹生成类的基类(LocalTrajectory-->GlobalTrajectory-->CollatedTrajectory)(逐个包含)
+///@class 二个轨迹生成类的基类(GlobalTrajectory-->CollatedTrajectory)(逐个包含)
 class TrajectoryBuilderInterface {
  public:
   struct InsertionResult {

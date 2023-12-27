@@ -56,9 +56,8 @@ class LocalTrajectoryBuilder2D {
     std::unique_ptr<const InsertionResult> insertion_result;
   };
 
-  explicit LocalTrajectoryBuilder2D(
-      const proto::LocalTrajectoryBuilderOptions2D& options,
-      const std::vector<std::string>& expected_range_sensor_ids);
+  explicit LocalTrajectoryBuilder2D(const proto::LocalTrajectoryBuilderOptions2D& options,
+                                    const std::vector<std::string>& expected_range_sensor_ids);
   ~LocalTrajectoryBuilder2D();
 
   LocalTrajectoryBuilder2D(const LocalTrajectoryBuilder2D&) = delete;
@@ -69,49 +68,50 @@ class LocalTrajectoryBuilder2D {
   // for 2D SLAM. `TimedPointCloudData::time` is when the last point in
   // `range_data` was acquired, `TimedPointCloudData::ranges` contains the
   // relative time of point with respect to `TimedPointCloudData::time`.
-  std::unique_ptr<MatchingResult> AddRangeData(
-      const std::string& sensor_id,
-      const sensor::TimedPointCloudData& range_data);
+  /** @brief google trans:
+   * 当范围数据累积完成时返回“MatchingResult”,否则返回“nullptr".
+   * 对于2D SLAM, 范围数据必须近似水平'TimedPointCloudData::time'是获取'range_data'中的最后一个点的时间,
+   * 'TimedPointCloudData：：range'包含点相对于'TimedPpointCloudData：time'的相对时间.
+   * */
+  std::unique_ptr<MatchingResult> AddRangeData(const std::string& sensor_id,
+                                               const sensor::TimedPointCloudData& range_data);
   void AddImuData(const sensor::ImuData& imu_data);
   void AddOdometryData(const sensor::OdometryData& odometry_data);
 
   static void RegisterMetrics(metrics::FamilyFactory* family_factory);
 
  private:
-  std::unique_ptr<MatchingResult> AddAccumulatedRangeData(
-      common::Time time, const sensor::RangeData& gravity_aligned_range_data,
-      const transform::Rigid3d& gravity_alignment,
-      const absl::optional<common::Duration>& sensor_duration);
+  std::unique_ptr<MatchingResult> AddAccumulatedRangeData(common::Time time,
+                                                          const sensor::RangeData& gravity_aligned_range_data,
+                                                          const transform::Rigid3d& gravity_alignment,
+                                                          const absl::optional<common::Duration>& sensor_duration);
   sensor::RangeData TransformToGravityAlignedFrameAndFilter(
-      const transform::Rigid3f& transform_to_gravity_aligned_frame,
-      const sensor::RangeData& range_data) const;
-  std::unique_ptr<InsertionResult> InsertIntoSubmap(
-      common::Time time, const sensor::RangeData& range_data_in_local,
-      const sensor::PointCloud& filtered_gravity_aligned_point_cloud,
-      const transform::Rigid3d& pose_estimate,
-      const Eigen::Quaterniond& gravity_alignment);
+      const transform::Rigid3f& transform_to_gravity_aligned_frame, const sensor::RangeData& range_data) const;
+  std::unique_ptr<InsertionResult> InsertIntoSubmap(common::Time time, const sensor::RangeData& range_data_in_local,
+                                                    const sensor::PointCloud& filtered_gravity_aligned_point_cloud,
+                                                    const transform::Rigid3d& pose_estimate,
+                                                    const Eigen::Quaterniond& gravity_alignment);
 
   // Scan matches 'filtered_gravity_aligned_point_cloud' and returns the
   // observed pose, or nullptr on failure.
-  std::unique_ptr<transform::Rigid2d> ScanMatch(
-      common::Time time, const transform::Rigid2d& pose_prediction,
-      const sensor::PointCloud& filtered_gravity_aligned_point_cloud);
+  std::unique_ptr<transform::Rigid2d> ScanMatch(common::Time time, const transform::Rigid2d& pose_prediction,
+                                                const sensor::PointCloud& filtered_gravity_aligned_point_cloud);
 
   // Lazily constructs a PoseExtrapolator.
+  ///@brief 初始化姿态递推器
   void InitializeExtrapolator(common::Time time);
 
   const proto::LocalTrajectoryBuilderOptions2D options_;
   ActiveSubmaps2D active_submaps_;
 
   MotionFilter motion_filter_;
-  scan_matching::RealTimeCorrelativeScanMatcher2D
-      real_time_correlative_scan_matcher_;
-  scan_matching::CeresScanMatcher2D ceres_scan_matcher_;
+  scan_matching::RealTimeCorrelativeScanMatcher2D real_time_correlative_scan_matcher_;  /// 实时扫描匹配
+  scan_matching::CeresScanMatcher2D ceres_scan_matcher_;                                /// 基于ceres的scan matcher
 
-  std::unique_ptr<PoseExtrapolator> extrapolator_;
+  std::unique_ptr<PoseExtrapolator> extrapolator_;  /// 位姿递推器
 
   int num_accumulated_ = 0;
-  sensor::RangeData accumulated_range_data_;
+  sensor::RangeData accumulated_range_data_;  /// 过滤与否的数据
 
   absl::optional<std::chrono::steady_clock::time_point> last_wall_time_;
   absl::optional<double> last_thread_cpu_time_seconds_;

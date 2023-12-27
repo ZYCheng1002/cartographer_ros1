@@ -25,6 +25,7 @@ void Collator::AddTrajectory(
     const Callback& callback) {
   for (const auto& sensor_id : expected_sensor_ids) {
     const auto queue_key = QueueKey{trajectory_id, sensor_id};
+    /// 增加回调函数,expected_sensor_ids包含多个传感器
     queue_.AddQueue(queue_key,
                     [callback, sensor_id](std::unique_ptr<Data> data) {
                       callback(sensor_id, std::move(data));
@@ -41,6 +42,7 @@ void Collator::FinishTrajectory(const int trajectory_id) {
 
 void Collator::AddSensorData(const int trajectory_id,
                              std::unique_ptr<Data> data) {
+  /// 通过data找到对应id,进行对应的callback
   QueueKey queue_key{trajectory_id, data->GetSensorId()};
   queue_.Add(std::move(queue_key), std::move(data));
 }
