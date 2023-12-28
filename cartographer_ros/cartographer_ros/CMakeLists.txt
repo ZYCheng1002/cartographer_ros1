@@ -32,6 +32,8 @@ set(PACKAGE_DEPENDENCIES
   tf2_ros
   urdf
   visualization_msgs
+  std_msgs
+  message_generation
 )
 
 if(WIN32)
@@ -74,6 +76,16 @@ include_directories(
 set(GTEST_FOUND TRUE)
 set(GTEST_INCLUDE_DIRS ${GMOCK_INCLUDE_DIRS})
 set(GTEST_LIBRARIES ${CARTOGRAPHER_GMOCK_LIBRARIES})
+
+# add wheelspeed msgs
+add_message_files(
+  FILES
+  WheelSpeed.msg
+)
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
 
 catkin_package(
   CATKIN_DEPENDS
