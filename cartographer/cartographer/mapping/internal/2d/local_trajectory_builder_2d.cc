@@ -48,6 +48,7 @@ LocalTrajectoryBuilder2D::~LocalTrajectoryBuilder2D() {}
 sensor::RangeData LocalTrajectoryBuilder2D::TransformToGravityAlignedFrameAndFilter(
     const transform::Rigid3f& transform_to_gravity_aligned_frame, const sensor::RangeData& range_data) const {
   /// 剔外点
+  /// sensor::TransformRangeData 对点进行旋转()
   const sensor::RangeData cropped = sensor::CropRangeData(
       sensor::TransformRangeData(range_data, transform_to_gravity_aligned_frame), options_.min_z(), options_.max_z());
   /// 体素滤波
@@ -150,7 +151,7 @@ std::unique_ptr<LocalTrajectoryBuilder2D::MatchingResult> LocalTrajectoryBuilder
   // Drop any returns below the minimum range and convert returns beyond the
   // maximum range into misses.
   for (size_t i = 0; i < synchronized_data.ranges.size(); ++i) {
-    /// 或者这个点和这个点在雷达坐标系下的坐标
+    /// 获得这个点和这个点在雷达坐标系下的坐标
     const sensor::TimedRangefinderPoint& hit = synchronized_data.ranges[i].point_time;
     /// 雷达在local坐标系的位置(这个位置是按照每个点的时间来的,所以也就做了运动补偿)
     const Eigen::Vector3f origin_in_local =
@@ -183,6 +184,7 @@ std::unique_ptr<LocalTrajectoryBuilder2D::MatchingResult> LocalTrajectoryBuilder
     last_sensor_time_ = current_sensor_time;
     /// 重置,等着下一次累积
     num_accumulated_ = 0;
+    /// time时刻下的姿态
     const transform::Rigid3d gravity_alignment =
         transform::Rigid3d::Rotation(extrapolator_->EstimateGravityOrientation(time));
     // TODO(gaschler): This assumes that 'range_data_poses.back()' is at time
