@@ -85,7 +85,10 @@ void PoseExtrapolator::AddPose(const common::Time time, const transform::Rigid3d
 
 void PoseExtrapolator::AddImuData(const sensor::ImuData& imu_data) {
   CHECK(timed_pose_queue_.empty() || imu_data.time >= timed_pose_queue_.back().time);
-  imu_data_.push_back(imu_data);
+  SystemInit(imu_data);
+  sensor::ImuData imu_data_bias = imu_data;
+  imu_data_bias.angular_velocity -= bias_gyro_;
+  imu_data_.push_back(imu_data_bias);
   TrimImuData();
 }
 
@@ -118,6 +121,7 @@ void PoseExtrapolator::AddOdometryData(const sensor::OdometryData& odometry_data
 
 void PoseExtrapolator::AddWheelData(const sensor::WheelSpeedData& wheelspeed_data) {
   wheelspeed_data_.push_back(wheelspeed_data);
+  current_wheelspeed_ = wheelspeed_data;
   TrimWheelSpeedData();
 }
 
@@ -236,6 +240,37 @@ PoseExtrapolator::ExtrapolationResult PoseExtrapolator::ExtrapolatePosesWithGrav
       odometry_data_.size() < 2 ? linear_velocity_from_poses_ : linear_velocity_from_odometry_;
   return ExtrapolationResult{poses, ExtrapolatePose(times.back()), current_velocity,
                              EstimateGravityOrientation(times.back())};
+}
+
+void PoseExtrapolator::SystemInit(const sensor::ImuData& imu_data) {
+  /// 目前仅初始化一次,考虑后续多次初始化
+  if (!static_init_ || init_success_.load()) {
+    return ;
+  }
+  if (wheelspeed_data_.empty()) {
+    return ;
+  }
+
+  /// 静止初始化
+  if (!StaticCheck(current_wheelspeed_.wheelspeed_left, current_wheelspeed_.wheelspeed_right)) {
+    imu_init_vec_.clear();
+  }
+  imu_init_vec_.push_back(imu_data);
+  auto InitImuBias = [&](const std::vector<sensor::ImuData>& imu_vec) {
+    Eigen::Vector3d gyro = Eigen::Vector3d ::Zero();
+    Eigen::Vector3d acce = Eigen::Vector3d ::Zero();
+    for (const sensor::ImuData& msg : imu_vec) {
+      gyro += msg.angular_velocity;
+      acce += msg.linear_acceleration;
+    }
+    bias_gyro_ = gyro / double(imu_vec.size());
+    acce_avr_ = acce / double(imu_vec.size());
+    LOG(INFO) << "imu gyro bias: " << bias_gyro_.transpose();
+  };
+  if (imu_init_vec_.size() > 200) {
+    InitImuBias(imu_init_vec_);
+    init_success_.store(true);
+  }
 }
 
 }  // namespace mapping

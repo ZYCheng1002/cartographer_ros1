@@ -106,7 +106,7 @@ std::unique_ptr<LocalTrajectoryBuilder2D::MatchingResult> LocalTrajectoryBuilder
     InitializeExtrapolator(time);
   }
 
-  if (extrapolator_ == nullptr) {
+  if (extrapolator_ == nullptr || !extrapolator_->GetInitStatus()) {
     // Until we've initialized the extrapolator with our first IMU message, we
     // cannot compute the orientation of the rangefinder.
     LOG(INFO) << "Extrapolator not yet initialized.";
@@ -292,10 +292,7 @@ void LocalTrajectoryBuilder2D::AddOdometryData(const sensor::OdometryData& odome
 }
 
 void LocalTrajectoryBuilder2D::AddWheelSpeedData(const sensor::WheelSpeedData& wheelspeed_data) {
-  if (extrapolator_ == nullptr) {
-    LOG(INFO) << "Extrapolator not yet initialized.";
-    return;
-  }
+  /// 初始化得靠这个
   extrapolator_->AddWheelData(wheelspeed_data);
 }
 
