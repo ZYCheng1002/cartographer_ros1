@@ -74,4 +74,7 @@ message LocalTrajectoryBuilderOptions2D {
 
   // True if IMU data should be expected and used.
   bool use_imu_data = 12;
+
+  // 如果为True, IMU进行静止初始化
+  bool imu_static_init = 22;
 }

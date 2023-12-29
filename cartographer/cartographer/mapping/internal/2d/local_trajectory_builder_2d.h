@@ -77,6 +77,7 @@ class LocalTrajectoryBuilder2D {
                                                const sensor::TimedPointCloudData& range_data);
   void AddImuData(const sensor::ImuData& imu_data);
   void AddOdometryData(const sensor::OdometryData& odometry_data);
+  void AddWheelSpeedData(const sensor::WheelSpeedData& wheelspeed_data);
 
   static void RegisterMetrics(metrics::FamilyFactory* family_factory);
 

@@ -31,6 +31,7 @@
 #include "cartographer/sensor/imu_data.h"
 #include "cartographer/sensor/landmark_data.h"
 #include "cartographer/sensor/odometry_data.h"
+#include "cartographer/sensor/wheel_data.h"
 #include "cartographer/sensor/timed_point_cloud_data.h"
 
 namespace cartographer {
@@ -101,6 +102,8 @@ class TrajectoryBuilderInterface {
                              const sensor::ImuData& imu_data) = 0;
   virtual void AddSensorData(const std::string& sensor_id,
                              const sensor::OdometryData& odometry_data) = 0;
+  virtual void AddSensorData(const std::string& sensor_id,
+                             const sensor::WheelSpeedData& wheel_data) = 0;
   virtual void AddSensorData(
       const std::string& sensor_id,
       const sensor::FixedFramePoseData& fixed_frame_pose) = 0;

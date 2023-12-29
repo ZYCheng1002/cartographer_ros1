@@ -291,6 +291,14 @@ void LocalTrajectoryBuilder2D::AddOdometryData(const sensor::OdometryData& odome
   extrapolator_->AddOdometryData(odometry_data);
 }
 
+void LocalTrajectoryBuilder2D::AddWheelSpeedData(const sensor::WheelSpeedData& wheelspeed_data) {
+  if (extrapolator_ == nullptr) {
+    LOG(INFO) << "Extrapolator not yet initialized.";
+    return;
+  }
+  extrapolator_->AddWheelData(wheelspeed_data);
+}
+
 void LocalTrajectoryBuilder2D::InitializeExtrapolator(const common::Time time) {
   if (extrapolator_ != nullptr) {
     return;
@@ -302,7 +310,7 @@ void LocalTrajectoryBuilder2D::InitializeExtrapolator(const common::Time time) {
   extrapolator_ = absl::make_unique<PoseExtrapolator>(
       ::cartographer::common::FromSeconds(
           options_.pose_extrapolator_options().constant_velocity().pose_queue_duration()),
-      options_.pose_extrapolator_options().constant_velocity().imu_gravity_time_constant());
+      options_.pose_extrapolator_options().constant_velocity().imu_gravity_time_constant(), options_.imu_static_init());
   /// 初始化给个单位阵
   extrapolator_->AddPose(time, transform::Rigid3d::Identity());
 }

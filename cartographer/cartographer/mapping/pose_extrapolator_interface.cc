@@ -95,5 +95,10 @@ PoseExtrapolatorInterface::CreateWithImuData(
   }
 }
 
+void PoseExtrapolatorInterface::AddWheelData(const sensor::WheelSpeedData& wheelspeed_data){
+  /// 因为非纯虚函数,所以需要这样搞一下;
+  /// 后期如果改成所有的模块都要用wheel,考虑改成纯虚函数
+}
+
 }  // namespace mapping
 }  // namespace cartographer

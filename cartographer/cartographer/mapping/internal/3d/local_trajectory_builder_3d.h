@@ -72,6 +72,7 @@ class LocalTrajectoryBuilder3D {
       const std::string& sensor_id,
       const sensor::TimedPointCloudData& range_data);
   void AddOdometryData(const sensor::OdometryData& odometry_data);
+  void AddWheelSpeedData(const sensor::WheelSpeedData& odometry_data);
 
   static void RegisterMetrics(metrics::FamilyFactory* family_factory);
 

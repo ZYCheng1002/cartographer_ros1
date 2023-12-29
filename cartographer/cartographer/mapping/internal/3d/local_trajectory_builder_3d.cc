@@ -384,6 +384,10 @@ void LocalTrajectoryBuilder3D::AddOdometryData(
   extrapolator_->AddOdometryData(odometry_data);
 }
 
+void LocalTrajectoryBuilder3D::AddWheelSpeedData(const sensor::WheelSpeedData& odometry_data) {
+  /// 暂时不用3D,但是为了编译通,放一下
+}
+
 std::unique_ptr<LocalTrajectoryBuilder3D::InsertionResult>
 LocalTrajectoryBuilder3D::InsertIntoSubmap(
     const common::Time time,

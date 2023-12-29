@@ -24,6 +24,7 @@
 #include "cartographer/mapping/proto/pose_extrapolator_options.pb.h"
 #include "cartographer/sensor/imu_data.h"
 #include "cartographer/sensor/odometry_data.h"
+#include "cartographer/sensor/wheel_data.h"
 #include "cartographer/transform/rigid_transform.h"
 #include "cartographer/transform/timestamped_transform.h"
 
@@ -60,9 +61,13 @@ class PoseExtrapolatorInterface {
   virtual common::Time GetLastPoseTime() const = 0;
   virtual common::Time GetLastExtrapolatedTime() const = 0;
 
+  ///@brief 返回初始化状态
+  virtual bool GetInitStatus() const = 0;
+
   virtual void AddPose(common::Time time, const transform::Rigid3d& pose) = 0;
   virtual void AddImuData(const sensor::ImuData& imu_data) = 0;
   virtual void AddOdometryData(const sensor::OdometryData& odometry_data) = 0;
+  virtual void AddWheelData(const sensor::WheelSpeedData& wheelspeed_data);  /// 没用纯虚函数
   virtual transform::Rigid3d ExtrapolatePose(common::Time time) = 0;
 
   virtual ExtrapolationResult ExtrapolatePosesWithGravity(

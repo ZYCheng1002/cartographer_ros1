@@ -35,7 +35,8 @@ namespace mapping {
 // available to improve the extrapolation.
 class PoseExtrapolator : public PoseExtrapolatorInterface {
  public:
-  explicit PoseExtrapolator(common::Duration pose_queue_duration, double imu_gravity_time_constant);
+  explicit PoseExtrapolator(common::Duration pose_queue_duration, double imu_gravity_time_constant,
+                            bool static_init = false);
 
   PoseExtrapolator(const PoseExtrapolator&) = delete;
   PoseExtrapolator& operator=(const PoseExtrapolator&) = delete;
@@ -49,10 +50,13 @@ class PoseExtrapolator : public PoseExtrapolatorInterface {
   common::Time GetLastPoseTime() const override;
   common::Time GetLastExtrapolatedTime() const override;
 
+  bool GetInitStatus() const override;
+
   ///@brief 增加CSM姿态结果
   void AddPose(common::Time time, const transform::Rigid3d& pose) override;
   void AddImuData(const sensor::ImuData& imu_data) override;
   void AddOdometryData(const sensor::OdometryData& odometry_data) override;
+  void AddWheelData(const sensor::WheelSpeedData& wheelspeed_data) override;
   transform::Rigid3d ExtrapolatePose(common::Time time) override;
 
   ExtrapolationResult ExtrapolatePosesWithGravity(const std::vector<common::Time>& times) override;
@@ -66,6 +70,9 @@ class PoseExtrapolator : public PoseExtrapolatorInterface {
 
   ///@brief imu列队处理
   void TrimImuData();
+
+  ///@brief wheel列队处理
+  void TrimWheelSpeedData();
 
   ///@brief odom列队处理
   void TrimOdometryData();
@@ -96,6 +103,10 @@ class PoseExtrapolator : public PoseExtrapolatorInterface {
   std::deque<sensor::OdometryData> odometry_data_;
   Eigen::Vector3d linear_velocity_from_odometry_ = Eigen::Vector3d::Zero();   /// 轮速获得的线速度
   Eigen::Vector3d angular_velocity_from_odometry_ = Eigen::Vector3d::Zero();  /// match获得的角速度
+
+  std::deque<sensor::WheelSpeedData> wheelspeed_data_;  /// 轮速数据
+  std::atomic<bool> init_success_{false};               /// 递推系统初始化成功标志位
+  bool static_init_;                            /// 是否进行静止初始化
 };
 
 }  // namespace mapping

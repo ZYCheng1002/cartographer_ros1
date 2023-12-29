@@ -58,12 +58,12 @@ std::unique_ptr<carto::sensor::OdometryData> SensorBridge::ToOdometryData(const 
       carto::sensor::OdometryData{time, ToRigid3d(msg->pose.pose) * sensor_to_tracking->inverse()});
 }
 
-std::unique_ptr<::cartographer::sensor::WheelSpeedData> SensorBridge::ToWheelSpeedData(const canbus::WheelSpeed::ConstPtr& msg){
+std::unique_ptr<::cartographer::sensor::WheelSpeedData> SensorBridge::ToWheelSpeedData(
+    const canbus::WheelSpeed::ConstPtr& msg) {
   const carto::common::Time time = FromRos(msg->header.stamp);
   return absl::make_unique<carto::sensor::WheelSpeedData>(
       carto::sensor::WheelSpeedData{time, msg->wheelspeed_l, msg->wheelspeed_r, msg->wheelbase});
 }
-
 
 bool SensorBridge::IgnoreMessage(const std::string& sensor_id, cartographer::common::Time sensor_time) {
   if (!ignore_out_of_order_messages_) {
@@ -92,7 +92,18 @@ void SensorBridge::HandleOdometryMessage(const std::string& sensor_id, const nav
 }
 
 void SensorBridge::HandleWheelMessage(const std::string& sensor_id, const canbus::WheelSpeed::ConstPtr& msg) {
-
+  std::unique_ptr<carto::sensor::WheelSpeedData> wheel_data = ToWheelSpeedData(msg);
+  if (wheel_data != nullptr) {
+    if (IgnoreMessage(sensor_id, wheel_data->time)) {
+      LOG(WARNING) << "Ignored odometry message from sensor " << sensor_id << " because sensor time "
+                   << wheel_data->time << " is not before last odometry message time "
+                   << latest_sensor_time_[sensor_id];
+      return;
+    }
+    latest_sensor_time_[sensor_id] = wheel_data->time;
+    trajectory_builder_->AddSensorData(sensor_id, carto::sensor::WheelSpeedData{wheel_data->time, msg->wheelspeed_l,
+                                                                                msg->wheelspeed_r, msg->wheelbase});
+  }
 }
 
 void SensorBridge::HandleNavSatFixMessage(const std::string& sensor_id, const sensor_msgs::NavSatFix::ConstPtr& msg) {

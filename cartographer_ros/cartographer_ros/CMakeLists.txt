@@ -51,7 +51,7 @@ find_package(cartographer REQUIRED)
 include("${CARTOGRAPHER_CMAKE_DIR}/functions.cmake")
 option(BUILD_GRPC "build features that require Cartographer gRPC support" false)
 google_initialize_cartographer_project()
-google_enable_testing()
+#google_enable_testing()
 set(CARTOGRAPHER_GMOCK_LIBRARIES ${GMOCK_LIBRARIES})
 
 find_package(catkin REQUIRED COMPONENTS ${PACKAGE_DEPENDENCIES})

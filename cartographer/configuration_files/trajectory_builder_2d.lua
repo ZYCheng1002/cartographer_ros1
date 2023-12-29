@@ -61,6 +61,7 @@ TRAJECTORY_BUILDER_2D = {
 
   -- TODO(schwoere,wohe): Remove this constant. This is only kept for ROS.
   imu_gravity_time_constant = 10.,
+  imu_static_init = false,
   pose_extrapolator = {
     use_imu_based = false,
     constant_velocity = {

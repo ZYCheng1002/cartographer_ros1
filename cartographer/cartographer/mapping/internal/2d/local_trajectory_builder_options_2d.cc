@@ -66,6 +66,7 @@ proto::LocalTrajectoryBuilderOptions2D CreateLocalTrajectoryBuilderOptions2D(
   *options.mutable_submaps_options() = CreateSubmapsOptions2D(
       parameter_dictionary->GetDictionary("submaps").get());
   options.set_use_imu_data(parameter_dictionary->GetBool("use_imu_data"));
+  options.set_imu_static_init(parameter_dictionary->GetBool("imu_static_init"));
   return options;
 }
 

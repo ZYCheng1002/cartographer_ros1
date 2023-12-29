@@ -35,27 +35,21 @@ namespace mapping {
 
 using ::cartographer::transform::TimestampedTransform;
 
-ImuBasedPoseExtrapolator::ImuBasedPoseExtrapolator(
-    const proto::ImuBasedPoseExtrapolatorOptions& options)
-    : options_(options),
-      solver_options_(
-          common::CreateCeresSolverOptions(options_.solver_options())) {}
+ImuBasedPoseExtrapolator::ImuBasedPoseExtrapolator(const proto::ImuBasedPoseExtrapolatorOptions& options)
+    : options_(options), solver_options_(common::CreateCeresSolverOptions(options_.solver_options())) {}
 
 ImuBasedPoseExtrapolator::~ImuBasedPoseExtrapolator() {
   LOG(INFO) << "Number of iterations for pose extrapolation:";
   LOG(INFO) << num_iterations_hist_.ToString(10);
 }
 
-std::unique_ptr<PoseExtrapolatorInterface>
-ImuBasedPoseExtrapolator::InitializeWithImu(
-    const proto::ImuBasedPoseExtrapolatorOptions& options,
-    const std::vector<sensor::ImuData>& imu_data,
+std::unique_ptr<PoseExtrapolatorInterface> ImuBasedPoseExtrapolator::InitializeWithImu(
+    const proto::ImuBasedPoseExtrapolatorOptions& options, const std::vector<sensor::ImuData>& imu_data,
     const std::vector<transform::TimestampedTransform>& initial_poses) {
   CHECK(!imu_data.empty());
   LOG(INFO) << options.DebugString();
   auto extrapolator = absl::make_unique<ImuBasedPoseExtrapolator>(options);
-  std::copy(imu_data.begin(), imu_data.end(),
-            std::back_inserter(extrapolator->imu_data_));
+  std::copy(imu_data.begin(), imu_data.end(), std::back_inserter(extrapolator->imu_data_));
   if (!initial_poses.empty()) {
     for (const auto& pose : initial_poses) {
       if (pose.time > imu_data.front().time) {
@@ -63,10 +57,8 @@ ImuBasedPoseExtrapolator::InitializeWithImu(
       }
     }
   } else {
-    extrapolator->AddPose(
-        imu_data.back().time,
-        transform::Rigid3d::Rotation(FromTwoVectors(
-            imu_data.back().linear_acceleration, Eigen::Vector3d::UnitZ())));
+    extrapolator->AddPose(imu_data.back().time, transform::Rigid3d::Rotation(FromTwoVectors(
+                                                    imu_data.back().linear_acceleration, Eigen::Vector3d::UnitZ())));
   }
   return extrapolator;
 }
@@ -78,16 +70,14 @@ common::Time ImuBasedPoseExtrapolator::GetLastPoseTime() const {
   return timed_pose_queue_.back().time;
 }
 
-common::Time ImuBasedPoseExtrapolator::GetLastExtrapolatedTime() const {
-  return last_extrapolated_time_;
-}
+common::Time ImuBasedPoseExtrapolator::GetLastExtrapolatedTime() const { return last_extrapolated_time_; }
 
-void ImuBasedPoseExtrapolator::AddPose(const common::Time time,
-                                       const transform::Rigid3d& pose) {
+bool ImuBasedPoseExtrapolator::GetInitStatus() const {return true;}
+
+void ImuBasedPoseExtrapolator::AddPose(const common::Time time, const transform::Rigid3d& pose) {
   timed_pose_queue_.push_back(TimestampedTransform{time, pose});
   while (timed_pose_queue_.size() > 3 &&
-         timed_pose_queue_[1].time <=
-             time - common::FromSeconds(options_.pose_queue_duration())) {
+         timed_pose_queue_[1].time <= time - common::FromSeconds(options_.pose_queue_duration())) {
     if (!previous_solution_.empty()) {
       CHECK_EQ(timed_pose_queue_.front().time, previous_solution_.front().time);
       previous_solution_.pop_front();
@@ -98,22 +88,18 @@ void ImuBasedPoseExtrapolator::AddPose(const common::Time time,
 }
 
 void ImuBasedPoseExtrapolator::AddImuData(const sensor::ImuData& imu_data) {
-  CHECK(timed_pose_queue_.empty() ||
-        imu_data.time >= timed_pose_queue_.back().time);
+  CHECK(timed_pose_queue_.empty() || imu_data.time >= timed_pose_queue_.back().time);
   imu_data_.push_back(imu_data);
   TrimImuData();
 }
 
-void ImuBasedPoseExtrapolator::AddOdometryData(
-    const sensor::OdometryData& odometry_data) {
-  CHECK(timed_pose_queue_.empty() ||
-        odometry_data.time >= timed_pose_queue_.back().time);
+void ImuBasedPoseExtrapolator::AddOdometryData(const sensor::OdometryData& odometry_data) {
+  CHECK(timed_pose_queue_.empty() || odometry_data.time >= timed_pose_queue_.back().time);
   odometry_data_.push_back(odometry_data);
   TrimOdometryData();
 }
 
-ImuBasedPoseExtrapolator::ExtrapolationResult
-ImuBasedPoseExtrapolator::ExtrapolatePosesWithGravity(
+ImuBasedPoseExtrapolator::ExtrapolationResult ImuBasedPoseExtrapolator::ExtrapolatePosesWithGravity(
     const std::vector<common::Time>& times) {
   const auto& time = times.back();
   const auto& newest_timed_pose = timed_pose_queue_.back();
@@ -121,13 +107,10 @@ ImuBasedPoseExtrapolator::ExtrapolatePosesWithGravity(
   CHECK_GE(times.size(), 1);
   last_extrapolated_time_ = time;
 
-  if (timed_pose_queue_.size() < 3 ||
-      common::ToSeconds(time - newest_timed_pose.time) < 1e-6) {
+  if (timed_pose_queue_.size() < 3 || common::ToSeconds(time - newest_timed_pose.time) < 1e-6) {
     return ExtrapolationResult{
-        std::vector<transform::Rigid3f>(
-            times.size() - 1, timed_pose_queue_.back().transform.cast<float>()),
-        timed_pose_queue_.back().transform, Eigen::Vector3d::Zero(),
-        timed_pose_queue_.back().transform.rotation()};
+        std::vector<transform::Rigid3f>(times.size() - 1, timed_pose_queue_.back().transform.cast<float>()),
+        timed_pose_queue_.back().transform, Eigen::Vector3d::Zero(), timed_pose_queue_.back().transform.rotation()};
   }
 
   ceres::Problem::Options problem_options;
@@ -135,9 +118,8 @@ ImuBasedPoseExtrapolator::ExtrapolatePosesWithGravity(
 
   // Track gravity alignment over time and use this as a frame here so that
   // we can estimate the gravity alignment of the current pose.
-  optimization::CeresPose gravity_from_local(
-      gravity_from_local_, nullptr,
-      absl::make_unique<ceres::QuaternionParameterization>(), &problem);
+  optimization::CeresPose gravity_from_local(gravity_from_local_, nullptr,
+                                             absl::make_unique<ceres::QuaternionParameterization>(), &problem);
   // Use deque so addresses stay constant during problem formulation.
   std::deque<optimization::CeresPose> nodes;
   std::vector<common::Time> node_times;
@@ -162,14 +144,11 @@ ImuBasedPoseExtrapolator::ExtrapolatePosesWithGravity(
 
     if (is_last) {
       nodes.emplace_back(gravity_from_node, nullptr,
-                         absl::make_unique<ceres::AutoDiffLocalParameterization<
-                             ConstantYawQuaternionPlus, 4, 2>>(),
+                         absl::make_unique<ceres::AutoDiffLocalParameterization<ConstantYawQuaternionPlus, 4, 2>>(),
                          &problem);
       problem.SetParameterBlockConstant(nodes.back().translation());
     } else {
-      nodes.emplace_back(gravity_from_node, nullptr,
-                         absl::make_unique<ceres::QuaternionParameterization>(),
-                         &problem);
+      nodes.emplace_back(gravity_from_node, nullptr, absl::make_unique<ceres::QuaternionParameterization>(), &problem);
     }
   }
 
@@ -189,32 +168,23 @@ ImuBasedPoseExtrapolator::ExtrapolatePosesWithGravity(
   const TimestampedTransform prev_gravity_from_tracking =
       TimestampedTransform{node_times.back(), nodes.back().ToRigid()};
   const TimestampedTransform prev_prev_gravity_from_tracking =
-      TimestampedTransform{node_times.at(node_times.size() - 2),
-                           nodes.at(nodes.size() - 2).ToRigid()};
+      TimestampedTransform{node_times.at(node_times.size() - 2), nodes.at(nodes.size() - 2).ToRigid()};
   const transform::Rigid3d initial_estimate =
-      ExtrapolatePoseWithImu<double>(
-          prev_gravity_from_tracking.transform, prev_gravity_from_tracking.time,
-          prev_prev_gravity_from_tracking.transform,
-          prev_prev_gravity_from_tracking.time,
-          gravity_constant * Eigen::Vector3d::UnitZ(), time, imu_data_,
-          &imu_it_prev_prev)
+      ExtrapolatePoseWithImu<double>(prev_gravity_from_tracking.transform, prev_gravity_from_tracking.time,
+                                     prev_prev_gravity_from_tracking.transform, prev_prev_gravity_from_tracking.time,
+                                     gravity_constant * Eigen::Vector3d::UnitZ(), time, imu_data_, &imu_it_prev_prev)
           .pose;
-  nodes.emplace_back(initial_estimate, nullptr,
-                     absl::make_unique<ceres::QuaternionParameterization>(),
-                     &problem);
+  nodes.emplace_back(initial_estimate, nullptr, absl::make_unique<ceres::QuaternionParameterization>(), &problem);
   node_times.push_back(time);
 
   // Add cost functions for node constraints.
   for (size_t i = 0; i < timed_pose_queue_.size(); i++) {
     const auto& timed_pose = timed_pose_queue_[i];
     problem.AddResidualBlock(
-        optimization::SpaCostFunction3D::CreateAutoDiffCostFunction(
-            PoseGraphInterface::Constraint::Pose{
-                timed_pose.transform, options_.pose_translation_weight(),
-                options_.pose_rotation_weight()}),
-        nullptr /* loss function */, gravity_from_local.rotation(),
-        gravity_from_local.translation(), nodes.at(i).rotation(),
-        nodes.at(i).translation());
+        optimization::SpaCostFunction3D::CreateAutoDiffCostFunction(PoseGraphInterface::Constraint::Pose{
+            timed_pose.transform, options_.pose_translation_weight(), options_.pose_rotation_weight()}),
+        nullptr /* loss function */, gravity_from_local.rotation(), gravity_from_local.translation(),
+        nodes.at(i).rotation(), nodes.at(i).translation());
   }
 
   CHECK(!imu_data_.empty());
@@ -222,13 +192,11 @@ ImuBasedPoseExtrapolator::ExtrapolatePosesWithGravity(
 
   std::array<double, 4> imu_calibration{{1., 0., 0., 0.}};
 
-  problem.AddParameterBlock(imu_calibration.data(), 4,
-                            new ceres::QuaternionParameterization());
+  problem.AddParameterBlock(imu_calibration.data(), 4, new ceres::QuaternionParameterization());
   problem.SetParameterBlockConstant(imu_calibration.data());
 
   auto imu_it = imu_data_.begin();
-  CHECK(imu_data_.size() == 1 ||
-        std::next(imu_it)->time > timed_pose_queue_.front().time);
+  CHECK(imu_data_.size() == 1 || std::next(imu_it)->time > timed_pose_queue_.front().time);
 
   transform::Rigid3d last_node_odometry;
   common::Time last_node_odometry_time;
@@ -238,8 +206,7 @@ ImuBasedPoseExtrapolator::ExtrapolatePosesWithGravity(
     const common::Time second_time = node_times[i];
 
     auto imu_it2 = imu_it;
-    const IntegrateImuResult<double> result =
-        IntegrateImu(imu_data_, first_time, second_time, &imu_it);
+    const IntegrateImuResult<double> result = IntegrateImu(imu_data_, first_time, second_time, &imu_it);
     if ((i + 1) < nodes.size()) {
       const common::Time third_time = node_times[i + 1];
       const common::Duration first_duration = second_time - first_time;
@@ -255,19 +222,14 @@ ImuBasedPoseExtrapolator::ExtrapolatePosesWithGravity(
       // second and third pose. It is computed from IMU data and still
       // contains a delta due to gravity. The orientation of this vector is
       // in the IMU frame at the second pose.
-      const Eigen::Vector3d delta_velocity =
-          (result.delta_rotation.inverse() *
-           result_to_first_center.delta_rotation) *
-          result_center_to_center.delta_velocity;
-      problem.AddResidualBlock(
-          AccelerationCostFunction3D::CreateAutoDiffCostFunction(
-              options_.imu_acceleration_weight(), delta_velocity,
-              common::ToSeconds(first_duration),
-              common::ToSeconds(second_duration)),
-          nullptr /* loss function */, nodes.at(i).rotation(),
-          nodes.at(i - 1).translation(), nodes.at(i).translation(),
-          nodes.at(i + 1).translation(), &gravity_constant,
-          imu_calibration.data());
+      const Eigen::Vector3d delta_velocity = (result.delta_rotation.inverse() * result_to_first_center.delta_rotation) *
+                                             result_center_to_center.delta_velocity;
+      problem.AddResidualBlock(AccelerationCostFunction3D::CreateAutoDiffCostFunction(
+                                   options_.imu_acceleration_weight(), delta_velocity,
+                                   common::ToSeconds(first_duration), common::ToSeconds(second_duration)),
+                               nullptr /* loss function */, nodes.at(i).rotation(), nodes.at(i - 1).translation(),
+                               nodes.at(i).translation(), nodes.at(i + 1).translation(), &gravity_constant,
+                               imu_calibration.data());
       // TODO(danielsievers): Fix gravity in CostFunction.
       if (fix_gravity) {
         problem.SetParameterBlockConstant(&gravity_constant);
@@ -277,14 +239,11 @@ ImuBasedPoseExtrapolator::ExtrapolatePosesWithGravity(
       }
     }
     problem.AddResidualBlock(
-        RotationCostFunction3D::CreateAutoDiffCostFunction(
-            options_.imu_rotation_weight(), result.delta_rotation),
-        nullptr /* loss function */, nodes.at(i - 1).rotation(),
-        nodes.at(i).rotation(), imu_calibration.data());
+        RotationCostFunction3D::CreateAutoDiffCostFunction(options_.imu_rotation_weight(), result.delta_rotation),
+        nullptr /* loss function */, nodes.at(i - 1).rotation(), nodes.at(i).rotation(), imu_calibration.data());
 
     // Add a relative pose constraint based on the odometry (if available).
-    if (HasOdometryDataForTime(first_time) &&
-        HasOdometryDataForTime(second_time)) {
+    if (HasOdometryDataForTime(first_time) && HasOdometryDataForTime(second_time)) {
       // Here keep track of last node odometry to avoid double computation.
       // Do this if first loop, or if there were some missing odometry nodes
       // then recalculate.
@@ -292,20 +251,15 @@ ImuBasedPoseExtrapolator::ExtrapolatePosesWithGravity(
         last_node_odometry = InterpolateOdometry(first_time);
         last_node_odometry_time = first_time;
       }
-      const transform::Rigid3d current_node_odometry =
-          InterpolateOdometry(second_time);
+      const transform::Rigid3d current_node_odometry = InterpolateOdometry(second_time);
       const transform::Rigid3d relative_odometry =
-          CalculateOdometryBetweenNodes(last_node_odometry,
-                                        current_node_odometry);
+          CalculateOdometryBetweenNodes(last_node_odometry, current_node_odometry);
 
       problem.AddResidualBlock(
-          optimization::SpaCostFunction3D::CreateAutoDiffCostFunction(
-              PoseGraphInterface::Constraint::Pose{
-                  relative_odometry, options_.odometry_translation_weight(),
-                  options_.odometry_rotation_weight()}),
-          nullptr /* loss function */, nodes.at(i - 1).rotation(),
-          nodes.at(i - 1).translation(), nodes.at(i).rotation(),
-          nodes.at(i).translation());
+          optimization::SpaCostFunction3D::CreateAutoDiffCostFunction(PoseGraphInterface::Constraint::Pose{
+              relative_odometry, options_.odometry_translation_weight(), options_.odometry_rotation_weight()}),
+          nullptr /* loss function */, nodes.at(i - 1).rotation(), nodes.at(i - 1).translation(),
+          nodes.at(i).rotation(), nodes.at(i).translation());
       // Use the current node odometry in the next iteration
       last_node_odometry = current_node_odometry;
       last_node_odometry_time = second_time;
@@ -321,9 +275,7 @@ ImuBasedPoseExtrapolator::ExtrapolatePosesWithGravity(
 
   const auto& last_pose = timed_pose_queue_.back();
   const auto extrapolated_pose = TimestampedTransform{
-      time, last_pose.transform *
-                nodes.at(nodes.size() - 2).ToRigid().inverse() *
-                nodes.back().ToRigid()};
+      time, last_pose.transform * nodes.at(nodes.size() - 2).ToRigid().inverse() * nodes.back().ToRigid()};
 
   num_iterations_hist_.Add(summary.iterations.size());
 
@@ -331,19 +283,15 @@ ImuBasedPoseExtrapolator::ExtrapolatePosesWithGravity(
 
   previous_solution_.clear();
   for (size_t i = 0; i < nodes.size(); ++i) {
-    previous_solution_.push_back(
-        TimestampedTransform{node_times.at(i), nodes.at(i).ToRigid()});
+    previous_solution_.push_back(TimestampedTransform{node_times.at(i), nodes.at(i).ToRigid()});
   }
 
   const Eigen::Vector3d current_velocity =
-      (extrapolated_pose.transform.translation() -
-       last_pose.transform.translation()) /
+      (extrapolated_pose.transform.translation() - last_pose.transform.translation()) /
       common::ToSeconds(time - last_pose.time);
 
-  return ExtrapolationResult{
-      InterpolatePoses(last_pose, extrapolated_pose, times.begin(),
-                       std::prev(times.end())),
-      extrapolated_pose.transform, current_velocity, gravity_estimate};
+  return ExtrapolationResult{InterpolatePoses(last_pose, extrapolated_pose, times.begin(), std::prev(times.end())),
+                             extrapolated_pose.transform, current_velocity, gravity_estimate};
 }
 
 std::vector<transform::Rigid3f> ImuBasedPoseExtrapolator::InterpolatePoses(
@@ -354,84 +302,59 @@ std::vector<transform::Rigid3f> ImuBasedPoseExtrapolator::InterpolatePoses(
   poses.reserve(std::distance(times_begin, times_end));
   const float duration_scale = 1. / common::ToSeconds(end.time - start.time);
 
-  const Eigen::Quaternionf start_rotation =
-      Eigen::Quaternionf(start.transform.rotation());
-  const Eigen::Quaternionf end_rotation =
-      Eigen::Quaternionf(end.transform.rotation());
-  const Eigen::Vector3f start_translation =
-      start.transform.translation().cast<float>();
-  const Eigen::Vector3f end_translation =
-      end.transform.translation().cast<float>();
+  const Eigen::Quaternionf start_rotation = Eigen::Quaternionf(start.transform.rotation());
+  const Eigen::Quaternionf end_rotation = Eigen::Quaternionf(end.transform.rotation());
+  const Eigen::Vector3f start_translation = start.transform.translation().cast<float>();
+  const Eigen::Vector3f end_translation = end.transform.translation().cast<float>();
 
   for (auto it = times_begin; it != times_end; ++it) {
     const float factor = common::ToSeconds(*it - start.time) * duration_scale;
-    const Eigen::Vector3f origin =
-        start_translation + (end_translation - start_translation) * factor;
-    const Eigen::Quaternionf rotation =
-        start_rotation.slerp(factor, end_rotation);
+    const Eigen::Vector3f origin = start_translation + (end_translation - start_translation) * factor;
+    const Eigen::Quaternionf rotation = start_rotation.slerp(factor, end_rotation);
     poses.emplace_back(origin, rotation);
   }
   return poses;
 }
 
-transform::Rigid3d ImuBasedPoseExtrapolator::ExtrapolatePose(
-    const common::Time time) {
-  return ExtrapolatePosesWithGravity(std::vector<common::Time>{time})
-      .current_pose;
+transform::Rigid3d ImuBasedPoseExtrapolator::ExtrapolatePose(const common::Time time) {
+  return ExtrapolatePosesWithGravity(std::vector<common::Time>{time}).current_pose;
 }
 
-Eigen::Quaterniond ImuBasedPoseExtrapolator::EstimateGravityOrientation(
-    const common::Time time) {
-  return ExtrapolatePosesWithGravity(std::vector<common::Time>{time})
-      .gravity_from_tracking;
+Eigen::Quaterniond ImuBasedPoseExtrapolator::EstimateGravityOrientation(const common::Time time) {
+  return ExtrapolatePosesWithGravity(std::vector<common::Time>{time}).gravity_from_tracking;
 }
 
 template <typename T>
 void ImuBasedPoseExtrapolator::TrimDequeData(std::deque<T>* data) {
-  while (data->size() > 1 && !timed_pose_queue_.empty() &&
-         data->at(1).time <= timed_pose_queue_.front().time) {
+  while (data->size() > 1 && !timed_pose_queue_.empty() && data->at(1).time <= timed_pose_queue_.front().time) {
     data->pop_front();
   }
 }
 
-void ImuBasedPoseExtrapolator::TrimImuData() {
-  TrimDequeData<sensor::ImuData>(&imu_data_);
-}
+void ImuBasedPoseExtrapolator::TrimImuData() { TrimDequeData<sensor::ImuData>(&imu_data_); }
 
-void ImuBasedPoseExtrapolator::TrimOdometryData() {
-  TrimDequeData<sensor::OdometryData>(&odometry_data_);
-}
+void ImuBasedPoseExtrapolator::TrimOdometryData() { TrimDequeData<sensor::OdometryData>(&odometry_data_); }
 
 // Odometry methods
-bool ImuBasedPoseExtrapolator::HasOdometryData() const {
-  return odometry_data_.size() >= 2;
+bool ImuBasedPoseExtrapolator::HasOdometryData() const { return odometry_data_.size() >= 2; }
+
+bool ImuBasedPoseExtrapolator::HasOdometryDataForTime(const common::Time& time) const {
+  return HasOdometryData() && odometry_data_.front().time < time && time < odometry_data_.back().time;
 }
 
-bool ImuBasedPoseExtrapolator::HasOdometryDataForTime(
-    const common::Time& time) const {
-  return HasOdometryData() && odometry_data_.front().time < time &&
-         time < odometry_data_.back().time;
-}
-
-transform::Rigid3d ImuBasedPoseExtrapolator::InterpolateOdometry(
-    const common::Time& time) const {
+transform::Rigid3d ImuBasedPoseExtrapolator::InterpolateOdometry(const common::Time& time) const {
   // Only interpolate if time is within odometry data range.
-  CHECK(HasOdometryDataForTime(time))
-      << "Odometry data range does not include time " << time;
+  CHECK(HasOdometryDataForTime(time)) << "Odometry data range does not include time " << time;
   std::deque<sensor::OdometryData>::const_iterator data = std::upper_bound(
       odometry_data_.begin(), odometry_data_.end(), time,
-      [](const common::Time& time, const sensor::OdometryData& odometry_data) {
-        return time < odometry_data.time;
-      });
-  const TimestampedTransform first{std::prev(data)->time,
-                                   std::prev(data)->pose};
+      [](const common::Time& time, const sensor::OdometryData& odometry_data) { return time < odometry_data.time; });
+  const TimestampedTransform first{std::prev(data)->time, std::prev(data)->pose};
   const TimestampedTransform second{data->time, data->pose};
   return Interpolate(first, second, time).transform;
 }
 
 transform::Rigid3d ImuBasedPoseExtrapolator::CalculateOdometryBetweenNodes(
-    const transform::Rigid3d& first_node_odometry,
-    const transform::Rigid3d& second_node_odometry) const {
+    const transform::Rigid3d& first_node_odometry, const transform::Rigid3d& second_node_odometry) const {
   return first_node_odometry.inverse() * second_node_odometry;
 }
 

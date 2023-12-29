@@ -109,6 +109,15 @@ class GlobalTrajectoryBuilder : public mapping::TrajectoryBuilderInterface {
     pose_graph_->AddOdometryData(trajectory_id_, odometry_data);
   }
 
+  void AddSensorData(const std::string& sensor_id, const sensor::WheelSpeedData& wheel_data) override {
+//    CHECK(odometry_data.pose.IsValid()) << odometry_data.pose;
+    /// 将wheelspeed数据增加到前端里程计
+    if (local_trajectory_builder_) {
+      local_trajectory_builder_->AddWheelSpeedData(wheel_data);
+    }
+    ///@note 暂时不加入到pgo,应该不会有好的改善
+  }
+
   void AddSensorData(const std::string& sensor_id, const sensor::FixedFramePoseData& fixed_frame_pose) override {
     if (fixed_frame_pose.pose.has_value()) {
       CHECK(fixed_frame_pose.pose.value().IsValid()) << fixed_frame_pose.pose.value();

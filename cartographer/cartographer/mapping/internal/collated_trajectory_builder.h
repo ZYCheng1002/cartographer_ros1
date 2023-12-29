@@ -65,6 +65,10 @@ class CollatedTrajectoryBuilder : public TrajectoryBuilderInterface {
     AddData(sensor::MakeDispatchable(sensor_id, odometry_data));
   }
 
+  void AddSensorData(const std::string& sensor_id, const sensor::WheelSpeedData& wheel_data) override {
+     AddData(sensor::MakeDispatchable(sensor_id, wheel_data));
+  }
+
   ///@brief fixed pose
   void AddSensorData(const std::string& sensor_id, const sensor::FixedFramePoseData& fixed_frame_pose_data) override {
     if (collate_fixed_frame_) {
