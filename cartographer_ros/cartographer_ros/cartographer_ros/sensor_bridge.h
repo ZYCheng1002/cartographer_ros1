@@ -23,6 +23,7 @@
 #include "cartographer/mapping/trajectory_builder_interface.h"
 #include "cartographer/sensor/imu_data.h"
 #include "cartographer/sensor/odometry_data.h"
+#include "cartographer/sensor/wheel_data.h"
 #include "cartographer/transform/rigid_transform.h"
 #include "cartographer/transform/transform.h"
 #include "cartographer_ros/tf_bridge.h"
@@ -31,6 +32,7 @@
 #include "geometry_msgs/TransformStamped.h"
 #include "nav_msgs/OccupancyGrid.h"
 #include "nav_msgs/Odometry.h"
+#include "canbus/WheelSpeed.h"
 #include "sensor_msgs/Imu.h"
 #include "sensor_msgs/LaserScan.h"
 #include "sensor_msgs/MultiEchoLaserScan.h"
@@ -51,7 +53,11 @@ class SensorBridge {
   SensorBridge& operator=(const SensorBridge&) = delete;
 
   std::unique_ptr<::cartographer::sensor::OdometryData> ToOdometryData(const nav_msgs::Odometry::ConstPtr& msg);
+
+  std::unique_ptr<::cartographer::sensor::WheelSpeedData> ToWheelSpeedData(const canbus::WheelSpeed::ConstPtr& msg);
+
   void HandleOdometryMessage(const std::string& sensor_id, const nav_msgs::Odometry::ConstPtr& msg);
+  void HandleWheelMessage(const std::string& sensor_id, const canbus::WheelSpeed::ConstPtr& msg);
   void HandleNavSatFixMessage(const std::string& sensor_id, const sensor_msgs::NavSatFix::ConstPtr& msg);
   void HandleLandmarkMessage(const std::string& sensor_id, const cartographer_ros_msgs::LandmarkList::ConstPtr& msg);
 

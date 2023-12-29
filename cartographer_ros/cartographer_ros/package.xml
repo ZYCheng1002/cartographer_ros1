@@ -63,6 +63,7 @@
   <depend>urdf</depend>
   <depend>visualization_msgs</depend>
   <depend>message_generation</depend>
+  <depend>canbus</depend>
 
   <test_depend>rosunit</test_depend>
 

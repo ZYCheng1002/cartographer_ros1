@@ -27,7 +27,7 @@ namespace mapping {
 // accelerations from an IMU. Because averaged linear acceleration (assuming
 // slow movement) is a direct measurement of gravity, roll/pitch does not drift,
 // though yaw does.
-///@class 根据IMU减速度进行姿态预测
+///@class 根据IMU加速度进行姿态预测
 class ImuTracker {
  public:
   ImuTracker(double imu_gravity_time_constant, common::Time time);

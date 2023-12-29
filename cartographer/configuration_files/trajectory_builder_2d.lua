@@ -14,13 +14,13 @@
 
 TRAJECTORY_BUILDER_2D = {
   use_imu_data = true,                  -- 是否使用imu数据
-  min_range = 0.,                       -- 雷达数据的最远最近滤波, 保存中间值
-  max_range = 30.,
+  min_range = 0.1,                       -- 雷达数据的最远最近滤波, 保存中间值
+  max_range = 50.,
   min_z = -0.8,                         -- 雷达数据的最高与最低的过滤, 保存中间值
   max_z = 2.,
   missing_data_ray_length = 5.,         -- 超过最大距离范围的数据点用这个距离代替
   num_accumulated_range_data = 1,       -- 几帧有效的点云数据进行一次扫描匹配
-  voxel_filter_size = 0.025,            -- 体素滤波的立方体的边长
+  voxel_filter_size = 0.005,            -- 体素滤波的立方体的边长
 
   adaptive_voxel_filter = {
     max_length = 0.5,

@@ -66,6 +66,14 @@ message OdometryData {
   transform.proto.Rigid3d pose = 2;
 }
 
+// Proto representation of ::cartographer::sensor::WheelSpeedData.
+message WheelSpeedData {
+  int64 timestamp = 1;
+  double wheelspeed_l = 2;
+  double wheelspeed_r = 3;
+  double wheelbase = 4;
+}
+
 // Proto representation of ::cartographer::sensor::FixedFramePoseData.
 message FixedFramePoseData {
   int64 timestamp = 1;

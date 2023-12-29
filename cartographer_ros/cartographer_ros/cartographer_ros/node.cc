@@ -215,15 +215,13 @@ void Node::AddExtrapolator(const int trajectory_id,
           gravity_time_constant));
 }
 
-void Node::AddSensorSamplers(const int trajectory_id,
-                             const TrajectoryOptions& options) {
+void Node::AddSensorSamplers(const int trajectory_id, const TrajectoryOptions& options) {
   CHECK(sensor_samplers_.count(trajectory_id) == 0);
   sensor_samplers_.emplace(
       std::piecewise_construct, std::forward_as_tuple(trajectory_id),
-      std::forward_as_tuple(
-          options.rangefinder_sampling_ratio, options.odometry_sampling_ratio,
-          options.fixed_frame_pose_sampling_ratio, options.imu_sampling_ratio,
-          options.landmarks_sampling_ratio));
+      std::forward_as_tuple(options.rangefinder_sampling_ratio, options.odometry_sampling_ratio,
+                            options.wheelspeed_sampling_ration, options.fixed_frame_pose_sampling_ratio,
+                            options.imu_sampling_ratio, options.landmarks_sampling_ratio));
 }
 
 void Node::PublishLocalTrajectoryData(const ::ros::TimerEvent& timer_event) {
@@ -475,6 +473,12 @@ void Node::LaunchSubscribers(const TrajectoryOptions& options,
                                                   trajectory_id, kOdometryTopic,
                                                   &node_handle_, this),
          kOdometryTopic});
+  }
+  if (options.use_wheelspeed) {
+    subscribers_[trajectory_id].push_back(
+        {SubscribeWithHandler<canbus::WheelSpeed>(&Node::HandleWheelSpeedMessage, trajectory_id,
+                                                            kWheelSpeedTopic, &node_handle_, this),
+         kWheelSpeedTopic});
   }
   if (options.use_nav_sat) {
     /// 使用RTK就订阅
@@ -796,6 +800,20 @@ void Node::HandleOdometryMessage(const int trajectory_id,
     extrapolators_.at(trajectory_id).AddOdometryData(*odometry_data_ptr);
   }
   sensor_bridge_ptr->HandleOdometryMessage(sensor_id, msg);
+}
+
+void Node::HandleWheelSpeedMessage(int trajectory_id, const std::string& sensor_id,
+                                   const canbus::WheelSpeed::ConstPtr& msg) {
+  absl::MutexLock lock(&mutex_);
+  if (!sensor_samplers_.at(trajectory_id).wheelspeed_sampler.Pulse()) {
+    return;
+  }
+  auto sensor_bridge_ptr = map_builder_bridge_.sensor_bridge(trajectory_id);
+  auto odometry_data_ptr = sensor_bridge_ptr->ToWheelSpeedData(msg);
+  if (odometry_data_ptr != nullptr && !sensor_bridge_ptr->IgnoreMessage(sensor_id, odometry_data_ptr->time)) {
+    /// extrapolators_.at(trajectory_id).AddOdometryData(*odometry_data_ptr);
+  }
+  sensor_bridge_ptr->HandleWheelMessage(sensor_id, msg);
 }
 
 void Node::HandleNavSatFixMessage(const int trajectory_id,

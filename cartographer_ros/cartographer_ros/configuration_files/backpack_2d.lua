@@ -26,12 +26,13 @@ options = {
   publish_frame_projected_to_2d = false,        -- 是否将坐标系投影到平面上
   use_pose_extrapolator = true,                 -- 发布tf时是否使用pose_extrapolator的结果
   use_odometry = false,                         -- 是否使用里程计,如果使用要求一定要有odom的tf
+  use_wheelspeed = true,                       -- 是否使用轮速
   use_nav_sat = false,                          -- 是否使用gps
   use_landmarks = false,                        -- 是否使用landmark
-  num_laser_scans = 0,                          -- 是否使用单线激光数据
-  num_multi_echo_laser_scans = 1,               -- 是否使用multi_echo_laser_scans数据
+  num_laser_scans = 1,                          -- 是否使用单线激光数据
+  num_multi_echo_laser_scans = 0,               -- 是否使用multi_echo_laser_scans数据
   -- 这两个还有下面的是否使用点云数据不能同时为0
-  num_subdivisions_per_laser_scan = 10,         -- 1帧数据被分成几次处理,一般为1
+  num_subdivisions_per_laser_scan = 1,         -- 1帧数据被分成几次处理,一般为1
   num_point_clouds = 0,                         -- 是否使用点云数据
   lookup_transform_timeout_sec = 0.2,           -- 查找tf时的超时时间
   submap_publish_period_sec = 0.3,              -- 发布数据的时间间隔
@@ -39,12 +40,13 @@ options = {
   trajectory_publish_period_sec = 30e-3,        -- 发布轨迹标记的间隔
   rangefinder_sampling_ratio = 1.,              -- 传感器数据的采样频率，多少次数据采样一次，默认都是1
   odometry_sampling_ratio = 1.,
+  wheelspeed_sampling_ration = 1.,
   fixed_frame_pose_sampling_ratio = 1.,
   imu_sampling_ratio = 1.,
   landmarks_sampling_ratio = 1.,
 }
 
 MAP_BUILDER.use_trajectory_builder_2d = true
-TRAJECTORY_BUILDER_2D.num_accumulated_range_data = 10   -- 其含义应该应该是多少帧插入一次子图，算法中还有一个乘二操作
+TRAJECTORY_BUILDER_2D.num_accumulated_range_data = 1   -- 其含义应该应该是多少帧插入一次子图，算法中还有一个乘二操作
 
 return options

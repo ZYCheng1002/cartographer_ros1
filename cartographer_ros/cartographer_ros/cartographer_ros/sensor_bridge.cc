@@ -58,6 +58,13 @@ std::unique_ptr<carto::sensor::OdometryData> SensorBridge::ToOdometryData(const 
       carto::sensor::OdometryData{time, ToRigid3d(msg->pose.pose) * sensor_to_tracking->inverse()});
 }
 
+std::unique_ptr<::cartographer::sensor::WheelSpeedData> SensorBridge::ToWheelSpeedData(const canbus::WheelSpeed::ConstPtr& msg){
+  const carto::common::Time time = FromRos(msg->header.stamp);
+  return absl::make_unique<carto::sensor::WheelSpeedData>(
+      carto::sensor::WheelSpeedData{time, msg->wheelspeed_l, msg->wheelspeed_r, msg->wheelbase});
+}
+
+
 bool SensorBridge::IgnoreMessage(const std::string& sensor_id, cartographer::common::Time sensor_time) {
   if (!ignore_out_of_order_messages_) {
     return false;
@@ -82,6 +89,10 @@ void SensorBridge::HandleOdometryMessage(const std::string& sensor_id, const nav
     trajectory_builder_->AddSensorData(sensor_id,
                                        carto::sensor::OdometryData{odometry_data->time, odometry_data->pose});
   }
+}
+
+void SensorBridge::HandleWheelMessage(const std::string& sensor_id, const canbus::WheelSpeed::ConstPtr& msg) {
+
 }
 
 void SensorBridge::HandleNavSatFixMessage(const std::string& sensor_id, const sensor_msgs::NavSatFix::ConstPtr& msg) {

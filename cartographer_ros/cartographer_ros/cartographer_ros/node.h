@@ -43,6 +43,7 @@
 #include "cartographer_ros_msgs/SubmapQuery.h"
 #include "cartographer_ros_msgs/WriteState.h"
 #include "nav_msgs/Odometry.h"
+#include "canbus/WheelSpeed.h"
 #include "ros/ros.h"
 #include "sensor_msgs/Imu.h"
 #include "sensor_msgs/LaserScan.h"
@@ -95,6 +96,9 @@ class Node {
   // The following functions handle adding sensor data to a trajectory.
   void HandleOdometryMessage(int trajectory_id, const std::string& sensor_id,
                              const nav_msgs::Odometry::ConstPtr& msg);
+  /// 轮速计处理
+  void HandleWheelSpeedMessage(int trajectory_id, const std::string& sensor_id,
+                               const canbus::WheelSpeed::ConstPtr& msg);
   void HandleNavSatFixMessage(int trajectory_id, const std::string& sensor_id,
                               const sensor_msgs::NavSatFix::ConstPtr& msg);
   void HandleLandmarkMessage(
@@ -204,17 +208,20 @@ class Node {
   struct TrajectorySensorSamplers {
     TrajectorySensorSamplers(const double rangefinder_sampling_ratio,
                              const double odometry_sampling_ratio,
+                             const double wheelspeed_sampling_ration,
                              const double fixed_frame_pose_sampling_ratio,
                              const double imu_sampling_ratio,
                              const double landmark_sampling_ratio)
         : rangefinder_sampler(rangefinder_sampling_ratio),
           odometry_sampler(odometry_sampling_ratio),
+          wheelspeed_sampler(wheelspeed_sampling_ration),
           fixed_frame_pose_sampler(fixed_frame_pose_sampling_ratio),
           imu_sampler(imu_sampling_ratio),
           landmark_sampler(landmark_sampling_ratio) {}
 
     ::cartographer::common::FixedRatioSampler rangefinder_sampler;
     ::cartographer::common::FixedRatioSampler odometry_sampler;
+    ::cartographer::common::FixedRatioSampler wheelspeed_sampler;
     ::cartographer::common::FixedRatioSampler fixed_frame_pose_sampler;
     ::cartographer::common::FixedRatioSampler imu_sampler;
     ::cartographer::common::FixedRatioSampler landmark_sampler;

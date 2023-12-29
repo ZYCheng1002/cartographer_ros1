@@ -35,6 +35,7 @@ struct TrajectoryOptions {
   bool use_odometry;
   bool use_nav_sat;
   bool use_landmarks;
+  bool use_wheelspeed;
   bool publish_frame_projected_to_2d;
   bool ignore_out_of_order_messages;
   int num_laser_scans;
@@ -43,6 +44,7 @@ struct TrajectoryOptions {
   int num_point_clouds;
   double rangefinder_sampling_ratio;
   double odometry_sampling_ratio;
+  double wheelspeed_sampling_ration;
   double fixed_frame_pose_sampling_ratio;
   double imu_sampling_ratio;
   double landmarks_sampling_ratio;
