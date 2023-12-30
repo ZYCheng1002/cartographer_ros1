@@ -69,6 +69,7 @@ class TrajectoryBuilderInterface {
       RANGE = 0,
       IMU,
       ODOMETRY,
+      WHEELSPEED,
       FIXED_FRAME_POSE,
       LANDMARK,
       LOCAL_SLAM_RESULT

@@ -1,21 +1,8 @@
-/*
- * Copyright 2017 The Cartographer Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+//
+// Created by czy on 23-12-30.
+//
 
-#ifndef CARTOGRAPHER_MAPPING_POSE_EXTRAPOLATOR_H_
-#define CARTOGRAPHER_MAPPING_POSE_EXTRAPOLATOR_H_
+#pragma once
 
 #include <deque>
 #include <memory>
@@ -33,17 +20,13 @@ namespace mapping {
 // Keep poses for a certain duration to estimate linear and angular velocity.
 // Uses the velocities to extrapolate motion. Uses IMU and/or odometry data if
 // available to improve the extrapolation.
-class PoseExtrapolator : public PoseExtrapolatorInterface {
+class DrExtrapolator : public PoseExtrapolatorInterface {
  public:
-  explicit PoseExtrapolator(common::Duration pose_queue_duration, double imu_gravity_time_constant,
-                            bool static_init = false);
+  explicit DrExtrapolator(common::Duration pose_queue_duration, double imu_gravity_time_constant,
+                          bool static_init = false);
 
-  PoseExtrapolator(const PoseExtrapolator&) = delete;
-  PoseExtrapolator& operator=(const PoseExtrapolator&) = delete;
-
-  static std::unique_ptr<PoseExtrapolator> InitializeWithImu(common::Duration pose_queue_duration,
-                                                             double imu_gravity_time_constant,
-                                                             const sensor::ImuData& imu_data);
+  DrExtrapolator(const DrExtrapolator&) = delete;
+  DrExtrapolator& operator=(const DrExtrapolator&) = delete;
 
   // Returns the time of the last added pose or Time::min() if no pose was added
   // yet.
@@ -70,9 +53,7 @@ class PoseExtrapolator : public PoseExtrapolatorInterface {
   void SystemStaticInit(const sensor::ImuData& imu_data);
 
   ///@brief 静态检查
-  inline bool StaticCheck(double x, double y) {
-    return fabs(x) <= 0.05 && fabs(y) <= 0.05;
-  }
+  inline bool StaticCheck(double x, double y) { return fabs(x) <= 0.1 && fabs(y) <= 0.1; }
 
   void UpdateVelocitiesFromPoses();
 
@@ -106,7 +87,7 @@ class PoseExtrapolator : public PoseExtrapolatorInterface {
   std::unique_ptr<ImuTracker> imu_tracker_;                /// 跟踪CSM获取的姿态
   std::unique_ptr<ImuTracker> odometry_imu_tracker_;       /// 跟踪odom获取的姿态
   std::unique_ptr<ImuTracker> extrapolation_imu_tracker_;  /// 跟踪姿态递推器获取的姿态
-  TimedPose cached_extrapolated_pose_;     
+  TimedPose cached_extrapolated_pose_;
 
   std::deque<sensor::OdometryData> odometry_data_;
   Eigen::Vector3d linear_velocity_from_odometry_ = Eigen::Vector3d::Zero();   /// 轮速获得的线速度
@@ -124,5 +105,3 @@ class PoseExtrapolator : public PoseExtrapolatorInterface {
 
 }  // namespace mapping
 }  // namespace cartographer
-
-#endif  // CARTOGRAPHER_MAPPING_POSE_EXTRAPOLATOR_H_

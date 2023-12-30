@@ -54,6 +54,7 @@ message SensorId {
     FIXED_FRAME_POSE = 3;
     LANDMARK = 4;
     LOCAL_SLAM_RESULT = 5;
+    WHEEL_SPEED = 6;
   }
 
   SensorType type = 1;

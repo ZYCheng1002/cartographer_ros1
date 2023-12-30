@@ -34,6 +34,7 @@
 #include "cartographer/sensor/odometry_data.h"
 #include "cartographer/sensor/range_data.h"
 #include "cartographer/transform/rigid_transform.h"
+#include "cartographer/mapping/dr_extrapolator.h"
 
 namespace cartographer {
 namespace mapping {
@@ -111,7 +112,7 @@ class LocalTrajectoryBuilder2D {
   scan_matching::RealTimeCorrelativeScanMatcher2D real_time_correlative_scan_matcher_;  /// 实时扫描匹配
   scan_matching::CeresScanMatcher2D ceres_scan_matcher_;                                /// 基于ceres的scan matcher
 
-  std::unique_ptr<PoseExtrapolator> extrapolator_;  /// 位姿递推器
+  std::unique_ptr<DrExtrapolator> extrapolator_;  /// 位姿递推器
 
   int num_accumulated_ = 0;
   sensor::RangeData accumulated_range_data_;  /// 过滤与否的数据(累积好几帧进行匹配)

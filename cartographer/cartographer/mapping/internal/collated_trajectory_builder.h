@@ -65,6 +65,7 @@ class CollatedTrajectoryBuilder : public TrajectoryBuilderInterface {
     AddData(sensor::MakeDispatchable(sensor_id, odometry_data));
   }
 
+  ///@brief wheel数据
   void AddSensorData(const std::string& sensor_id, const sensor::WheelSpeedData& wheel_data) override {
      AddData(sensor::MakeDispatchable(sensor_id, wheel_data));
   }

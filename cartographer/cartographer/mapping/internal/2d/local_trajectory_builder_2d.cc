@@ -293,6 +293,10 @@ void LocalTrajectoryBuilder2D::AddOdometryData(const sensor::OdometryData& odome
 
 void LocalTrajectoryBuilder2D::AddWheelSpeedData(const sensor::WheelSpeedData& wheelspeed_data) {
   /// 初始化得靠这个
+  if (extrapolator_ == nullptr) {
+    LOG(INFO) << "Extrapolator not yet initialized.";
+    return;
+  }
   extrapolator_->AddWheelData(wheelspeed_data);
 }
 
@@ -304,7 +308,7 @@ void LocalTrajectoryBuilder2D::InitializeExtrapolator(const common::Time time) {
   // TODO(gaschler): Consider using InitializeWithImu as 3D does.
 
   /// pose queue大小和重力加速度值
-  extrapolator_ = absl::make_unique<PoseExtrapolator>(
+  extrapolator_ = absl::make_unique<DrExtrapolator>(
       ::cartographer::common::FromSeconds(
           options_.pose_extrapolator_options().constant_velocity().pose_queue_duration()),
       options_.pose_extrapolator_options().constant_velocity().imu_gravity_time_constant(), options_.imu_static_init());

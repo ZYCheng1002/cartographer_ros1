@@ -184,7 +184,9 @@ if(${BUILD_GRPC})
 endif()
 set(INSTALL_GENERATED_HDRS ${ALL_PROTO_HDRS} ${ALL_GRPC_SERVICE_HDRS})
 
-add_library(${PROJECT_NAME} STATIC ${ALL_LIBRARY_HDRS} ${ALL_LIBRARY_SRCS})
+add_library(${PROJECT_NAME} STATIC ${ALL_LIBRARY_HDRS} ${ALL_LIBRARY_SRCS}
+        cartographer/mapping/dr_extrapolator.cc
+        cartographer/mapping/dr_extrapolator.h)
 
 configure_file(
   ${PROJECT_SOURCE_DIR}/cartographer/common/config.h.cmake

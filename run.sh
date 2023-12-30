@@ -1,0 +1,1 @@
+roslaunch cartographer_ros demo_backpack_2d.launch bag_filename:=${HOME}/data/cartographer/carto.bag

@@ -1,20 +1,8 @@
-/*
- * Copyright 2017 The Cartographer Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+//
+// Created by czy on 23-12-30.
+//
 
-#include "cartographer/mapping/pose_extrapolator.h"
+#include "cartographer/mapping/dr_extrapolator.h"
 
 #include <algorithm>
 
@@ -25,7 +13,7 @@
 namespace cartographer {
 namespace mapping {
 
-PoseExtrapolator::PoseExtrapolator(const common::Duration pose_queue_duration, double imu_gravity_time_constant,
+DrExtrapolator::DrExtrapolator(const common::Duration pose_queue_duration, double imu_gravity_time_constant,
                                    bool static_init)
     : pose_queue_duration_(pose_queue_duration),
       gravity_time_constant_(imu_gravity_time_constant),
@@ -34,36 +22,24 @@ PoseExtrapolator::PoseExtrapolator(const common::Duration pose_queue_duration, d
   init_success_.store(false);  /// 构造时都给的失败
 }
 
-std::unique_ptr<PoseExtrapolator> PoseExtrapolator::InitializeWithImu(const common::Duration pose_queue_duration,
-                                                                      const double imu_gravity_time_constant,
-                                                                      const sensor::ImuData& imu_data) {
-  auto extrapolator = absl::make_unique<PoseExtrapolator>(pose_queue_duration, imu_gravity_time_constant);
-  extrapolator->AddImuData(imu_data);
-  extrapolator->imu_tracker_ = absl::make_unique<ImuTracker>(imu_gravity_time_constant, imu_data.time);
-  extrapolator->imu_tracker_->AddImuLinearAccelerationObservation(imu_data.linear_acceleration);
-  extrapolator->imu_tracker_->AddImuAngularVelocityObservation(imu_data.angular_velocity);
-  extrapolator->imu_tracker_->Advance(imu_data.time);
-  extrapolator->AddPose(imu_data.time, transform::Rigid3d::Rotation(extrapolator->imu_tracker_->orientation()));
-  return extrapolator;
-}
 
-common::Time PoseExtrapolator::GetLastPoseTime() const {
+common::Time DrExtrapolator::GetLastPoseTime() const {
   if (timed_pose_queue_.empty()) {
     return common::Time::min();
   }
   return timed_pose_queue_.back().time;
 }
 
-common::Time PoseExtrapolator::GetLastExtrapolatedTime() const {
+common::Time DrExtrapolator::GetLastExtrapolatedTime() const {
   if (!extrapolation_imu_tracker_) {
     return common::Time::min();
   }
   return extrapolation_imu_tracker_->time();
 }
 
-bool PoseExtrapolator::GetInitStatus() const { return !static_init_ || init_success_.load(); }
+bool DrExtrapolator::GetInitStatus() const { return !static_init_ || init_success_.load(); }
 
-void PoseExtrapolator::AddPose(const common::Time time, const transform::Rigid3d& pose) {
+void DrExtrapolator::AddPose(const common::Time time, const transform::Rigid3d& pose) {
   if (imu_tracker_ == nullptr) {
     common::Time tracker_start = time;
     if (!imu_data_.empty()) {
@@ -83,7 +59,7 @@ void PoseExtrapolator::AddPose(const common::Time time, const transform::Rigid3d
   extrapolation_imu_tracker_ = absl::make_unique<ImuTracker>(*imu_tracker_);
 }
 
-void PoseExtrapolator::AddImuData(const sensor::ImuData& imu_data) {
+void DrExtrapolator::AddImuData(const sensor::ImuData& imu_data) {
   CHECK(timed_pose_queue_.empty() || imu_data.time >= timed_pose_queue_.back().time);
   SystemStaticInit(imu_data);
   sensor::ImuData imu_data_bias = imu_data;
@@ -92,7 +68,7 @@ void PoseExtrapolator::AddImuData(const sensor::ImuData& imu_data) {
   TrimImuData();
 }
 
-void PoseExtrapolator::AddOdometryData(const sensor::OdometryData& odometry_data) {
+void DrExtrapolator::AddOdometryData(const sensor::OdometryData& odometry_data) {
   CHECK(timed_pose_queue_.empty() || odometry_data.time >= timed_pose_queue_.back().time);
   odometry_data_.push_back(odometry_data);
   TrimOdometryData();
@@ -119,14 +95,14 @@ void PoseExtrapolator::AddOdometryData(const sensor::OdometryData& odometry_data
       orientation_at_newest_odometry_time * linear_velocity_in_tracking_frame_at_newest_odometry_time;
 }
 
-void PoseExtrapolator::AddWheelData(const sensor::WheelSpeedData& wheelspeed_data) {
-  CHECK(timed_pose_queue_.empty() || wheelspeed_data.time >= timed_pose_queue_.back().time);
+void DrExtrapolator::AddWheelData(const sensor::WheelSpeedData& wheelspeed_data) {
+//  CHECK(timed_pose_queue_.empty() || wheelspeed_data.time >= timed_pose_queue_.back().time);
   wheelspeed_data_.push_back(wheelspeed_data);
   current_wheelspeed_ = wheelspeed_data;
   TrimWheelSpeedData();
 }
 
-transform::Rigid3d PoseExtrapolator::ExtrapolatePose(const common::Time time) {
+transform::Rigid3d DrExtrapolator::ExtrapolatePose(const common::Time time) {
   const TimedPose& newest_timed_pose = timed_pose_queue_.back();
   CHECK_GE(time, newest_timed_pose.time);
   if (cached_extrapolated_pose_.time != time) {
@@ -138,13 +114,13 @@ transform::Rigid3d PoseExtrapolator::ExtrapolatePose(const common::Time time) {
   return cached_extrapolated_pose_.pose;
 }
 
-Eigen::Quaterniond PoseExtrapolator::EstimateGravityOrientation(const common::Time time) {
+Eigen::Quaterniond DrExtrapolator::EstimateGravityOrientation(const common::Time time) {
   ImuTracker imu_tracker = *imu_tracker_;
   AdvanceImuTracker(time, &imu_tracker);
   return imu_tracker.orientation();
 }
 
-void PoseExtrapolator::UpdateVelocitiesFromPoses() {
+void DrExtrapolator::UpdateVelocitiesFromPoses() {
   if (timed_pose_queue_.size() < 2) {
     // We need two poses to estimate velocities.
     return;
@@ -167,27 +143,28 @@ void PoseExtrapolator::UpdateVelocitiesFromPoses() {
       queue_delta;
 }
 
-void PoseExtrapolator::TrimImuData() {
+void DrExtrapolator::TrimImuData() {
   while (imu_data_.size() > 1 && !timed_pose_queue_.empty() && imu_data_[1].time <= timed_pose_queue_.back().time) {
     imu_data_.pop_front();
   }
 }
 
-void PoseExtrapolator::TrimOdometryData() {
+void DrExtrapolator::TrimOdometryData() {
   while (odometry_data_.size() > 2 && !timed_pose_queue_.empty() &&
          odometry_data_[1].time <= timed_pose_queue_.back().time) {
     odometry_data_.pop_front();
   }
 }
 
-void PoseExtrapolator::TrimWheelSpeedData() {
+void DrExtrapolator::TrimWheelSpeedData() {
   while (wheelspeed_data_.size() > 2 && !timed_pose_queue_.empty() &&
          wheelspeed_data_[1].time <= timed_pose_queue_.back().time) {
+
     wheelspeed_data_.pop_front();
   }
 }
 
-void PoseExtrapolator::AdvanceImuTracker(const common::Time time, ImuTracker* const imu_tracker) const {
+void DrExtrapolator::AdvanceImuTracker(const common::Time time, ImuTracker* const imu_tracker) const {
   CHECK_GE(time, imu_tracker->time());
   if (imu_data_.empty() || time < imu_data_.front().time) {
     // There is no IMU data until 'time', so we advance the ImuTracker and use
@@ -214,14 +191,14 @@ void PoseExtrapolator::AdvanceImuTracker(const common::Time time, ImuTracker* co
   imu_tracker->Advance(time);
 }
 
-Eigen::Quaterniond PoseExtrapolator::ExtrapolateRotation(const common::Time time, ImuTracker* const imu_tracker) const {
+Eigen::Quaterniond DrExtrapolator::ExtrapolateRotation(const common::Time time, ImuTracker* const imu_tracker) const {
   CHECK_GE(time, imu_tracker->time());
   AdvanceImuTracker(time, imu_tracker);
   const Eigen::Quaterniond last_orientation = imu_tracker_->orientation();
   return last_orientation.inverse() * imu_tracker->orientation();
 }
 
-Eigen::Vector3d PoseExtrapolator::ExtrapolateTranslation(common::Time time) {
+Eigen::Vector3d DrExtrapolator::ExtrapolateTranslation(common::Time time) {
   const TimedPose& newest_timed_pose = timed_pose_queue_.back();
   const double extrapolation_delta = common::ToSeconds(time - newest_timed_pose.time);
   if (odometry_data_.size() < 2) {
@@ -230,7 +207,7 @@ Eigen::Vector3d PoseExtrapolator::ExtrapolateTranslation(common::Time time) {
   return extrapolation_delta * linear_velocity_from_odometry_;
 }
 
-PoseExtrapolator::ExtrapolationResult PoseExtrapolator::ExtrapolatePosesWithGravity(
+DrExtrapolator::ExtrapolationResult DrExtrapolator::ExtrapolatePosesWithGravity(
     const std::vector<common::Time>& times) {
   std::vector<transform::Rigid3f> poses;
   for (auto it = times.begin(); it != std::prev(times.end()); ++it) {
@@ -243,7 +220,7 @@ PoseExtrapolator::ExtrapolationResult PoseExtrapolator::ExtrapolatePosesWithGrav
                              EstimateGravityOrientation(times.back())};
 }
 
-void PoseExtrapolator::SystemStaticInit(const sensor::ImuData& imu_data) {
+void DrExtrapolator::SystemStaticInit(const sensor::ImuData& imu_data) {
   /// 目前仅初始化一次,考虑后续多次初始化
   if (!static_init_ || init_success_.load() || wheelspeed_data_.empty()) {
     return ;
@@ -269,7 +246,6 @@ void PoseExtrapolator::SystemStaticInit(const sensor::ImuData& imu_data) {
     InitImuBias(imu_init_vec_);
     init_success_.store(true);
   }
-
 }
 
 }  // namespace mapping

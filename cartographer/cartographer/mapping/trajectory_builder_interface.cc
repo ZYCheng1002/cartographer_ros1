@@ -86,6 +86,9 @@ proto::SensorId ToProto(const TrajectoryBuilderInterface::SensorId& sensor_id) {
     case TrajectoryBuilderInterface::SensorId::SensorType::ODOMETRY:
       sensor_id_proto.set_type(proto::SensorId::ODOMETRY);
       break;
+    case TrajectoryBuilderInterface::SensorId::SensorType::WHEELSPEED:
+      sensor_id_proto.set_type(proto::SensorId::WHEEL_SPEED);
+      break;
     case TrajectoryBuilderInterface::SensorId::SensorType::FIXED_FRAME_POSE:
       sensor_id_proto.set_type(proto::SensorId::FIXED_FRAME_POSE);
       break;

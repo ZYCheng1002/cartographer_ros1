@@ -390,6 +390,9 @@ Node::ComputeExpectedSensorIds(const TrajectoryOptions& options) const {
   if (options.use_odometry) {
     expected_topics.insert(SensorId{SensorType::ODOMETRY, kOdometryTopic});
   }
+  if (options.use_wheelspeed) {
+    expected_topics.insert(SensorId{SensorType::WHEELSPEED, kWheelSpeedTopic});
+  }
   // NavSatFix is optional.
   /// gps
   if (options.use_nav_sat) {
@@ -811,7 +814,7 @@ void Node::HandleWheelSpeedMessage(int trajectory_id, const std::string& sensor_
   auto sensor_bridge_ptr = map_builder_bridge_.sensor_bridge(trajectory_id);
   auto odometry_data_ptr = sensor_bridge_ptr->ToWheelSpeedData(msg);
   if (odometry_data_ptr != nullptr && !sensor_bridge_ptr->IgnoreMessage(sensor_id, odometry_data_ptr->time)) {
-    extrapolators_.at(trajectory_id).AddWheelData(*odometry_data_ptr);
+    // extrapolators_.at(trajectory_id).AddWheelData(*odometry_data_ptr);
   }
   sensor_bridge_ptr->HandleWheelMessage(sensor_id, msg);
 }
