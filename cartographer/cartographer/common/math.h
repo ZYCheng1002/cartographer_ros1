@@ -81,6 +81,10 @@ inline void QuaternionProduct(const double* const z, const T* const w,
   zw[3] = z[0] * w[3] + z[1] * w[2] - z[2] * w[1] + z[3] * w[0];
 }
 
+/// 一些使用到的常量
+constexpr double kDEG2RAD = M_PI / 180.0;  // deg->rad
+constexpr double kRAD2DEG = 180.0 / M_PI;  // rad -> deg
+constexpr double G_m_s2 = 9.81;            // 重力大小
 }  // namespace common
 }  // namespace cartographer
 

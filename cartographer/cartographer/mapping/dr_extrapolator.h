@@ -13,6 +13,8 @@
 #include "cartographer/sensor/imu_data.h"
 #include "cartographer/sensor/odometry_data.h"
 #include "cartographer/transform/rigid_transform.h"
+#include "cartographer/mapping/internal/eskf.h"
+#include "cartographer/mapping/internal/static_init.h"
 
 namespace cartographer {
 namespace mapping {

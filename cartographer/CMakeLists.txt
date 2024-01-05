@@ -226,6 +226,9 @@ if(${BUILD_GRPC})
   endif()
 endif()
 
+# Add sophus
+include_directories(${PROJECT_SOURCE_DIR}/thirdparty/Sophus)
+
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC
   "${EIGEN3_INCLUDE_DIR}")
 target_link_libraries(${PROJECT_NAME} PUBLIC ${EIGEN3_LIBRARIES})
