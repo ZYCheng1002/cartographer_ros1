@@ -60,6 +60,9 @@ int64 ToUniversal(Time time);
 /// cartographer Time 转普通时间(s)
 double ToNormalSeconds(Time time);
 
+/// 普通时间转为Time
+Time NormalToTime(double second);
+
 // For logging and unit tests, outputs the timestamp integer.
 std::ostream& operator<<(std::ostream& os, Time time);
 

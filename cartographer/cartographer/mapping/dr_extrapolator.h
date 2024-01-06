@@ -15,6 +15,8 @@
 #include "cartographer/transform/rigid_transform.h"
 #include "cartographer/mapping/internal/eskf.h"
 #include "cartographer/mapping/internal/static_init.h"
+#include "cartographer/transform/transform_interpolation_buffer.h"
+#include <mutex>
 
 namespace cartographer {
 namespace mapping {
@@ -26,6 +28,7 @@ class DrExtrapolator : public PoseExtrapolatorInterface {
  public:
   explicit DrExtrapolator(common::Duration pose_queue_duration, double imu_gravity_time_constant,
                           bool static_init = false);
+  ~DrExtrapolator();
 
   DrExtrapolator(const DrExtrapolator&) = delete;
   DrExtrapolator& operator=(const DrExtrapolator&) = delete;
@@ -85,7 +88,8 @@ class DrExtrapolator : public PoseExtrapolatorInterface {
   StaticIMUInit static_imu_init_;
   ESKFD eskf_;
   bool imu_inited_ = false;
-
+  transform::TransformInterpolationBuffer timed_eskf_pose_buffer;
+  std::mutex eskf_buffer_mutex;
 };
 
 }  // namespace mapping

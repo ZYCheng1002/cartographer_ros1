@@ -38,6 +38,8 @@ TimestampedTransform Interpolate(const TimestampedTransform& start,
                                  const TimestampedTransform& end,
                                  const common::Time time);
 
+///@brief 插值(找到对应时间点的pose之后进行插值)
+
 }  // namespace transform
 }  // namespace cartographer
 

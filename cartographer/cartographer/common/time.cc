@@ -52,6 +52,13 @@ double ToNormalSeconds(Time time) {
   return static_cast<double>(ns_since_unix) * 1e-9;
 }
 
+Time NormalToTime(double second) {
+  auto sec = int64 (second);
+  auto nsec = int64 ((second - sec) * 1e10);
+  return ::cartographer::common::FromUniversal(
+      (sec +::cartographer::common::kUtsEpochOffsetFromUnixEpochInSeconds) * 10000000ll +(nsec + 50) / 100);
+}
+
 std::ostream& operator<<(std::ostream& os, const Time time) {
   os << std::to_string(ToUniversal(time));
   return os;

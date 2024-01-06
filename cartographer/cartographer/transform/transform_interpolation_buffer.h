@@ -76,6 +76,10 @@ class TransformInterpolationBuffer {
   // Returns the current size of the transform buffer.
   size_t size() const;
 
+  std::deque<TimestampedTransform> GetTimedPoseDeque() {
+    return timestamped_transforms_;
+  }
+
  private:
   void RemoveOldTransformsIfNeeded();
 

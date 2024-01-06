@@ -38,10 +38,7 @@ namespace cartographer_ros {
   // The epoch of the ICU Universal Time Scale is "0001-01-01 00:00:00.0 +0000",
   // exactly 719162 days before the Unix epoch.
   return ::cartographer::common::FromUniversal(
-      (time.sec +
-       ::cartographer::common::kUtsEpochOffsetFromUnixEpochInSeconds) *
-          10000000ll +
-      (time.nsec + 50) / 100);  // + 50 to get the rounding correct.
+      (time.sec +::cartographer::common::kUtsEpochOffsetFromUnixEpochInSeconds) * 10000000ll +(time.nsec + 50) / 100);  // + 50 to get the rounding correct.
 }
 
 }  // namespace cartographer_ros

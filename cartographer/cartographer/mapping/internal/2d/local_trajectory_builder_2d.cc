@@ -15,6 +15,7 @@
  */
 
 #include "cartographer/mapping/internal/2d/local_trajectory_builder_2d.h"
+#include "cartographer/transform/transform_interpolation_buffer.h"
 
 #include <limits>
 #include <memory>
@@ -109,7 +110,7 @@ std::unique_ptr<LocalTrajectoryBuilder2D::MatchingResult> LocalTrajectoryBuilder
   if (extrapolator_ == nullptr || !extrapolator_->GetInitStatus()) {
     // Until we've initialized the extrapolator with our first IMU message, we
     // cannot compute the orientation of the rangefinder.
-    LOG(INFO) << "Extrapolator not yet initialized.";
+    LOG_EVERY_N(INFO, 10) << "Extrapolator not yet initialized.";
     return nullptr;
   }
 

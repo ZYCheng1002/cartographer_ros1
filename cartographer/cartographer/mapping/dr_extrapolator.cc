@@ -5,6 +5,7 @@
 #include "cartographer/mapping/dr_extrapolator.h"
 
 #include <algorithm>
+#include <fstream>
 
 #include "absl/memory/memory.h"
 #include "cartographer/transform/transform.h"
@@ -23,6 +24,28 @@ DrExtrapolator::DrExtrapolator(const common::Duration pose_queue_duration, doubl
   LOG(WARNING) << static_init_option.static_odom_speed_;
    static_imu_init_ = StaticIMUInit(static_init_option);
    eskf_ = ESKFD();
+   // timed_eskf_pose_buffer.SetSizeLimit(300);
+}
+
+DrExtrapolator::~DrExtrapolator() {
+  std::string  path = "/home/idriver/data/carto_data/dr_result.txt";
+  if (timed_eskf_pose_buffer.empty()) {
+    return ;
+  }
+  std::ofstream file;
+  file.open(path);
+  if (!file) {
+    return ;
+  }
+  file << std::fixed;
+  auto save_result = [&file](const Vec3d& position) {
+    file << position.x() << " " << position.y();
+  };
+  for (const auto& pose : timed_eskf_pose_buffer.GetTimedPoseDeque()) {
+    save_result(pose.transform.translation());
+    file << std::endl;
+  }
+  file.close();
 }
 
 
@@ -76,8 +99,10 @@ void DrExtrapolator::AddImuData(const sensor::ImuData& imu_data) {
   }
   /// 预测
   eskf_.Predict(imu_data);
-  /// fixme
   auto state = eskf_.GetNominalState();
+  transform::Rigid3d pose(state.p_, state.R_.unit_quaternion());
+  common::Time time_current = common::NormalToTime(state.timestamp_);
+  timed_eskf_pose_buffer.Push(imu_data.time, pose);
 }
 
 void DrExtrapolator::AddOdometryData(const sensor::OdometryData& odometry_data) {
@@ -93,9 +118,10 @@ void DrExtrapolator::AddWheelData(const sensor::WheelSpeedData& wheelspeed_data)
 }
 
 transform::Rigid3d DrExtrapolator::ExtrapolatePose(const common::Time time) {
-  const TimedPose& newest_timed_pose = timed_pose_queue_.back();
+  const TimedPose& newest_timed_pose = timed_pose_queue_.back();  /// 获取最新的pose
   CHECK_GE(time, newest_timed_pose.time);
   if (cached_extrapolated_pose_.time != time) {
+    std::unique_lock<std::mutex> lock(eskf_buffer_mutex);
     const Eigen::Vector3d translation = ExtrapolateTranslation(time) + newest_timed_pose.pose.translation();
     const Eigen::Quaterniond rotation =
         newest_timed_pose.pose.rotation() * ExtrapolateRotation(time, extrapolation_imu_tracker_.get());
