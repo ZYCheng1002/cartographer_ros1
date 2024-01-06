@@ -7,6 +7,7 @@
 // #include "common/imu.h"
 // #include "common/odom.h"
 #include <deque>
+#include <numeric>
 
 #include "cartographer/common/eigen_helper.h"
 #include "cartographer/sensor/imu_data.h"
@@ -22,7 +23,7 @@ class StaticIMUInit {
     double init_time_seconds_ = 10.0;            /// 静止时间
     int init_imu_queue_max_size_ = 2000;         /// 初始化IMU队列最大长度
     int static_odom_pulse_ = 5;                  /// 静止时轮速计输出噪声
-    int static_osom_speed_ = 0.05;               /// 静止时轮速计的最小速度
+    double static_odom_speed_ = 0.05;               /// 静止时轮速计的最小速度
     double max_static_gyro_var = 0.5;            /// 静态下陀螺测量方差
     double max_static_acce_var = 0.05;           /// 静态下加计测量方差
     double gravity_norm_ = 9.81;                 /// 重力大小
@@ -30,7 +31,10 @@ class StaticIMUInit {
   };
 
   /// 构造函数
-  StaticIMUInit(Options options = Options()) : options_(options) {}
+  StaticIMUInit(Options options = Options()) {
+    options_.reset(new Options());
+    *options_ = options;
+  }
 
   /// 添加IMU数据
   bool AddIMU(const sensor::ImuData& imu);
@@ -48,10 +52,24 @@ class StaticIMUInit {
   Vec3d GetGravity() const { return gravity_; }
 
  private:
+  template<typename C, typename D, typename Getter>
+  void ComputeMeanAndCovDiag(const C &data, D &mean, D &cov_diag, Getter &&getter) {
+    size_t len = data.size();
+    assert(len > 1);
+    // clang-format off
+        mean = std::accumulate(data.begin(), data.end(), D::Zero().eval(),
+                               [&getter](const D &sum, const sensor::ImuData &data) -> D { return sum + getter(data); }) / len;
+        cov_diag = std::accumulate(data.begin(), data.end(), D::Zero().eval(),
+                                   [&mean, &getter](const D &sum, const sensor::ImuData &data) -> D {
+                                       return sum + (getter(data) - mean).cwiseAbs2().eval();
+                                   }) / (len - 1);
+    // clang-format on
+  }
+
   /// 尝试对系统初始化
   bool TryInit();
 
-  Options options_;                 // 选项信息
+  std::unique_ptr<Options> options_;                 // 选项信息
   bool init_success_ = false;       // 初始化是否成功
   Vec3d cov_gyro_ = Vec3d::Zero();  // 陀螺测量噪声协方差（初始化时评估）
   Vec3d cov_acce_ = Vec3d::Zero();  // 加计测量噪声协方差（初始化时评估）

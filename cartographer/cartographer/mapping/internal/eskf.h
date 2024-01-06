@@ -9,9 +9,58 @@
 namespace cartographer {
 namespace mapping {
 
+template<typename T>
+struct NavState {
+  using Vec3 = Eigen::Matrix<T, 3, 1>;
+  using SO3 = Sophus::SO3<T>;
+
+  NavState() = default;
+
+  // from time, R, p, v, bg, ba
+  explicit NavState(double time, const SO3 &R = SO3(), const Vec3 &t = Vec3::Zero(), const Vec3 &v = Vec3::Zero(),
+                    const Vec3 &bg = Vec3::Zero(), const Vec3 &ba = Vec3::Zero())
+      : timestamp_(time), R_(R), p_(t), v_(v), bg_(bg), ba_(ba) {}
+
+  // from pose and vel
+  NavState(double time, const SE3 &pose, const Vec3 &vel = Vec3::Zero())
+      : timestamp_(time), R_(pose.so3()), p_(pose.translation()), v_(vel) {}
+
+  /// 转换到Sophus
+  Sophus::SE3<T> GetSE3() const { return SE3(R_, p_); }
+
+  friend std::ostream &operator<<(std::ostream &os, const NavState<T> &s) {
+    os << "p: " << s.p_.transpose() << ", v: " << s.v_.transpose()
+       << ", q: " << s.R_.unit_quaternion().coeffs().transpose() << ", bg: " << s.bg_.transpose()
+       << ", ba: " << s.ba_.transpose();
+    return os;
+  }
+
+  double timestamp_ = 0;    // 时间
+  SO3 R_;                   // 旋转
+  Vec3 p_ = Vec3::Zero();   // 平移
+  Vec3 v_ = Vec3::Zero();   // 速度
+  Vec3 bg_ = Vec3::Zero();  // gyro 零偏
+  Vec3 ba_ = Vec3::Zero();  // acce 零偏
+};
+
+using NavStated = NavState<double>;
+using NavStatef = NavState<float>;
+
 template <typename S=double>
 class ESKF{
  public:
+  /// 类型定义
+  using SO3 = Sophus::SO3<S>;                     // 旋转变量类型
+  using VecT = Eigen::Matrix<S, 3, 1>;            // 向量类型
+  using Vec18T = Eigen::Matrix<S, 18, 1>;         // 18维向量类型
+  using Mat3T = Eigen::Matrix<S, 3, 3>;           // 3x3矩阵类型
+  using MotionNoiseT = Eigen::Matrix<S, 18, 18>;  // 运动噪声类型
+  using OdomNoiseT = Eigen::Matrix<S, 3, 3>;      // 里程计噪声类型
+  using GnssNoiseT = Eigen::Matrix<S, 6, 6>;      // GNSS噪声类型
+  using Mat18T = Eigen::Matrix<S, 18, 18>;        // 18维方差类型
+  using NavStateT = NavState<S>;                  // 整体名义状态变量类型
+
+
   struct Options {
     Options() = default;
 
@@ -33,7 +82,245 @@ class ESKF{
     bool update_bias_gyro_ = true;  // 是否更新陀螺bias
     bool update_bias_acce_ = true;  // 是否更新加计bias
   };
+
+  /**
+         * 初始零偏取零
+   */
+  ESKF(Options option = Options()) : options_(option) { BuildNoise(option); }
+
+  /**
+         * 设置初始条件
+         * @param options 噪声项配置
+         * @param init_bg 初始零偏 陀螺
+         * @param init_ba 初始零偏 加计
+         * @param gravity 重力
+   */
+  void SetInitialConditions(Options options, const VecT &init_bg, const VecT &init_ba,
+                            const VecT &gravity = VecT(0, 0, -9.8)) {
+    BuildNoise(options);
+    options_ = options;
+    bg_ = init_bg;
+    ba_ = init_ba;
+    g_ = gravity;
+    cov_ = Mat18T::Identity() * 1e-4;
+  }
+
+  /// 使用IMU递推
+  bool Predict(const sensor::ImuData &imu);
+
+  /// 使用轮速计观测
+  bool ObserveWheelSpeed(const sensor::WheelSpeedData &odom);
+
+  /// 使用GPS观测
+  // bool ObserveGps(const GNSS &gnss);
+
+  /**
+         * 使用SE3进行观测
+         * @param pose  观测位姿
+         * @param trans_noise 平移噪声
+         * @param ang_noise   角度噪声
+         * @return
+   */
+  bool ObserveSE3(const SE3 &pose, double trans_noise = 0.1, double ang_noise = 1.0 * common::kDEG2RAD);
+
+  /// accessors
+  /// 获取全量状态
+  NavStateT GetNominalState() const { return NavStateT(current_time_, R_, p_, v_, bg_, ba_); }
+
+  /// 获取SE3 状态
+  SE3 GetNominalSE3() const { return SE3(R_, p_); }
+
+  /// 设置状态X
+  void SetX(const NavStated &x, const Vec3d &grav) {
+    current_time_ = x.timestamp_;
+    R_ = x.R_;
+    p_ = x.p_;
+    v_ = x.v_;
+    bg_ = x.bg_;
+    ba_ = x.ba_;
+    g_ = grav;
+  }
+
+  /// 设置协方差
+  void SetCov(const Mat18T &cov) { cov_ = cov; }
+
+  /// 获取重力
+  Vec3d GetGravity() const { return g_; }
+
+ private:
+  void BuildNoise(const Options &options) {
+    double ev = options.acce_var_;
+    double et = options.gyro_var_;
+    double eg = options.bias_gyro_var_;
+    double ea = options.bias_acce_var_;
+
+    double ev2 = ev;  // * ev;
+    double et2 = et;  // * et;
+    double eg2 = eg;  // * eg;
+    double ea2 = ea;  // * ea;
+
+    // 设置过程噪声
+    Q_.diagonal() << 0, 0, 0, ev2, ev2, ev2, et2, et2, et2, eg2, eg2, eg2, ea2, ea2, ea2, 0, 0, 0;
+
+    // 设置里程计噪声
+    double o2 = options_.odom_var_ * options_.odom_var_;
+    odom_noise_.diagonal() << o2, o2, o2;
+  }
+
+  /// 更新名义状态变量，重置error state
+  void UpdateAndReset() {
+    p_ += dx_.template block<3, 1>(0, 0);
+    v_ += dx_.template block<3, 1>(3, 0);
+    R_ = R_ * SO3::exp(dx_.template block<3, 1>(6, 0));
+
+    if (options_.update_bias_gyro_) {
+      bg_ += dx_.template block<3, 1>(9, 0);
+    }
+
+    if (options_.update_bias_acce_) {
+      ba_ += dx_.template block<3, 1>(12, 0);
+    }
+
+    g_ += dx_.template block<3, 1>(15, 0);
+
+    ProjectCov();
+    dx_.setZero();
+  }
+
+  /// 对P阵进行投影，参考式(3.63)
+  void ProjectCov() {
+    Mat18T J = Mat18T::Identity();
+    J.template block<3, 3>(6, 6) = Mat3T::Identity() - 0.5 * SO3::hat(dx_.template block<3, 1>(6, 0));
+    cov_ = J * cov_ * J.transpose();
+  }
+
+  /// 成员变量
+  double current_time_ = 0.0;  // 当前时间
+
+  /// 名义状态
+  VecT p_ = VecT::Zero();
+  VecT v_ = VecT::Zero();
+  SO3 R_;
+  VecT bg_ = VecT::Zero();
+  VecT ba_ = VecT::Zero();
+  VecT g_{0, 0, -9.8};
+
+  /// 误差状态
+  Vec18T dx_ = Vec18T::Zero();
+
+  /// 协方差阵
+  Mat18T cov_ = Mat18T::Identity();
+
+  /// 噪声阵
+  MotionNoiseT Q_ = MotionNoiseT::Zero();
+  OdomNoiseT odom_noise_ = OdomNoiseT::Zero();
+
+  /// 标志位
+  bool first_gnss_ = true;  // 是否为第一个gnss数据
+
+  /// 配置项
+  Options options_;
 };
+
+using ESKFD = ESKF<double>;
+using ESKFF = ESKF<float>;
+
+template<typename S>
+bool ESKF<S>::Predict(const sensor::ImuData &imu) {
+  double imu_timestamp = common::ToNormalSeconds(imu.time);
+  assert(imu_timestamp >= current_time_);
+
+  double dt = imu_timestamp - current_time_;
+  if (dt > (5 * options_.imu_dt_) || dt < 0) {
+    // 时间间隔不对，可能是第一个IMU数据，没有历史信息
+    LOG(INFO) << "skip this imu because dt_ = " << dt;
+    current_time_ = imu_timestamp;
+    return false;
+  }
+
+  // nominal state 递推
+  VecT new_p = p_ + v_ * dt + 0.5 * (R_ * (imu.linear_acceleration - ba_)) * dt * dt + 0.5 * g_ * dt * dt;
+  VecT new_v = v_ + R_ * (imu.linear_acceleration - ba_) * dt + g_ * dt;
+  SO3 new_R = R_ * SO3::exp((imu.angular_velocity - bg_) * dt);
+
+  R_ = new_R;
+  v_ = new_v;
+  p_ = new_p;
+  // 其余状态维度不变
+
+  // error state 递推
+  // 计算运动过程雅可比矩阵 F，见(3.47)
+  // F实际上是稀疏矩阵，也可以不用矩阵形式进行相乘而是写成散装形式，这里为了教学方便，使用矩阵形式
+  Mat18T F = Mat18T::Identity();                                                 // 主对角线
+  F.template block<3, 3>(0, 3) = Mat3T::Identity() * dt;                         // p 对 v
+  F.template block<3, 3>(3, 6) = -R_.matrix() * SO3::hat(imu.linear_acceleration - ba_) * dt;  // v对theta
+  F.template block<3, 3>(3, 12) = -R_.matrix() * dt;                             // v 对 ba
+  F.template block<3, 3>(3, 15) = Mat3T::Identity() * dt;                        // v 对 g
+  F.template block<3, 3>(6, 6) = SO3::exp(-(imu.angular_velocity - bg_) * dt).matrix();     // theta 对 theta
+  F.template block<3, 3>(6, 9) = -Mat3T::Identity() * dt;                        // theta 对 bg
+
+  // mean and cov prediction
+  dx_ = F * dx_;  // 这行其实没必要算，dx_在重置之后应该为零，因此这步可以跳过，但F需要参与Cov部分计算，所以保留
+  cov_ = F * cov_.eval() * F.transpose() + Q_;
+  current_time_ = imu_timestamp;
+  return true;
+}
+
+template<typename S>
+bool ESKF<S>::ObserveWheelSpeed(const sensor::WheelSpeedData &odom) {
+  double odom_timestamp = common::ToNormalSeconds(odom.time);
+  if (odom_timestamp > current_time_) {
+    return false;
+  }
+  /// odom 修正以及雅可比
+  /// 使用三维的轮速观测，H为3x18，大部分为零
+  Eigen::Matrix<S, 3, 18> H = Eigen::Matrix<S, 3, 18>::Zero();
+  H.template block<3, 3>(0, 3) = Mat3T::Identity();
+
+  /// 卡尔曼增益
+  Eigen::Matrix<S, 18, 3> K = cov_ * H.transpose() * (H * cov_ * H.transpose() + odom_noise_).inverse();
+
+  /// 速度观测
+  double average_vel = 0.5 * (odom.wheelspeed_right + odom.wheelspeed_left);
+  VecT vel_odom(average_vel, 0.0, 0.0);
+  VecT vel_world = R_ * vel_odom;
+
+  dx_ = K * (vel_world - v_);
+
+  // update cov
+  cov_ = (Mat18T::Identity() - K * H) * cov_;
+
+  UpdateAndReset();
+  return true;
+}
+
+
+template<typename S>
+bool ESKF<S>::ObserveSE3(const SE3 &pose, double trans_noise, double ang_noise) {
+  /// 既有旋转，也有平移
+  /// 观测状态变量中的p, R，H为6x18，其余为零
+  Eigen::Matrix<S, 6, 18> H = Eigen::Matrix<S, 6, 18>::Zero();
+  H.template block<3, 3>(0, 0) = Mat3T::Identity();  // P部分
+  H.template block<3, 3>(3, 6) = Mat3T::Identity();  // R部分（3.66)
+
+  // 卡尔曼增益和更新过程
+  Vec6d noise_vec;
+  noise_vec << trans_noise, trans_noise, trans_noise, ang_noise, ang_noise, ang_noise;
+
+  Mat6d V = noise_vec.asDiagonal();
+  Eigen::Matrix<S, 18, 6> K = cov_ * H.transpose() * (H * cov_ * H.transpose() + V).inverse();
+
+  // 更新x和cov
+  Vec6d innov = Vec6d::Zero();
+  innov.template head<3>() = (pose.translation() - p_);          // 平移部分
+  innov.template tail<3>() = (R_.inverse() * pose.so3()).log();  // 旋转部分(3.67)
+
+  dx_ = K * innov;
+  cov_ = (Mat18T::Identity() - K * H) * cov_;
+
+  UpdateAndReset();
+  return true;
+}
 
 }  // namespace mapping
 }  // namespace cartographer

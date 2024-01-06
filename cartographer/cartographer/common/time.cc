@@ -46,6 +46,12 @@ Time FromUniversal(const int64 ticks) { return Time(Duration(ticks)); }
 
 int64 ToUniversal(const Time time) { return time.time_since_epoch().count(); }
 
+double ToNormalSeconds(Time time) {
+  int64_t uts_stamp = ToUniversal(time);
+  int64_t ns_since_unix = (uts_stamp - kUtsEpochOffsetFromUnixEpochInSeconds *10000000ll) * 100ll ;
+  return static_cast<double>(ns_since_unix) * 1e-9;
+}
+
 std::ostream& operator<<(std::ostream& os, const Time time) {
   os << std::to_string(ToUniversal(time));
   return os;

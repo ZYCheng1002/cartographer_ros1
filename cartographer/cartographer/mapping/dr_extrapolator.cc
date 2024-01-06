@@ -18,8 +18,11 @@ DrExtrapolator::DrExtrapolator(const common::Duration pose_queue_duration, doubl
     : pose_queue_duration_(pose_queue_duration),
       gravity_time_constant_(imu_gravity_time_constant),
       cached_extrapolated_pose_{common::Time::min(), transform::Rigid3d::Identity()} {
-  static_init_ = static_init;
-  init_success_.store(false);  /// 构造时都给的失败
+  use_static_init_ = static_init;
+  auto static_init_option = StaticIMUInit::Options();
+  LOG(WARNING) << static_init_option.static_odom_speed_;
+   static_imu_init_ = StaticIMUInit(static_init_option);
+   eskf_ = ESKFD();
 }
 
 
@@ -37,7 +40,7 @@ common::Time DrExtrapolator::GetLastExtrapolatedTime() const {
   return extrapolation_imu_tracker_->time();
 }
 
-bool DrExtrapolator::GetInitStatus() const { return !static_init_ || init_success_.load(); }
+bool DrExtrapolator::GetInitStatus() const { return imu_inited_; }
 
 void DrExtrapolator::AddPose(const common::Time time, const transform::Rigid3d& pose) {
   if (imu_tracker_ == nullptr) {
@@ -53,53 +56,40 @@ void DrExtrapolator::AddPose(const common::Time time, const transform::Rigid3d& 
   }
   UpdateVelocitiesFromPoses();
   AdvanceImuTracker(time, imu_tracker_.get());
-  TrimImuData();
-  TrimOdometryData();
   odometry_imu_tracker_ = absl::make_unique<ImuTracker>(*imu_tracker_);
   extrapolation_imu_tracker_ = absl::make_unique<ImuTracker>(*imu_tracker_);
 }
 
 void DrExtrapolator::AddImuData(const sensor::ImuData& imu_data) {
-  CHECK(timed_pose_queue_.empty() || imu_data.time >= timed_pose_queue_.back().time);
-  SystemStaticInit(imu_data);
-  sensor::ImuData imu_data_bias = imu_data;
-  imu_data_bias.angular_velocity -= bias_gyro_;
-  imu_data_.push_back(imu_data_bias);
-  TrimImuData();
+  if (!static_imu_init_.InitSuccess()) {
+    static_imu_init_.AddIMU(imu_data);
+    return ;
+  }
+  /// 需要对imu进行初始化
+  if (!imu_inited_) {
+    ESKFD ::Options eskf_options;
+    eskf_options.gyro_var_ = sqrt(static_imu_init_.GetCovGyro()[0]);
+    eskf_options.acce_var_ = sqrt(static_imu_init_.GetCovAcce()[0]);
+    eskf_.SetInitialConditions(eskf_options, static_imu_init_.GetInitBg(), static_imu_init_.GetInitBa(), static_imu_init_.GetGravity());
+    imu_inited_ = true;
+    return;
+  }
+  /// 预测
+  eskf_.Predict(imu_data);
+  /// fixme
+  auto state = eskf_.GetNominalState();
 }
 
 void DrExtrapolator::AddOdometryData(const sensor::OdometryData& odometry_data) {
-  CHECK(timed_pose_queue_.empty() || odometry_data.time >= timed_pose_queue_.back().time);
-  odometry_data_.push_back(odometry_data);
-  TrimOdometryData();
-  if (odometry_data_.size() < 2) {
-    return;
+  /// 暂时用不到
   }
-  // TODO(whess): Improve by using more than just the last two odometry poses.
-  // Compute extrapolation in the tracking frame.
-  const sensor::OdometryData& odometry_data_oldest = odometry_data_.front();
-  const sensor::OdometryData& odometry_data_newest = odometry_data_.back();
-  const double odometry_time_delta = common::ToSeconds(odometry_data_oldest.time - odometry_data_newest.time);
-  const transform::Rigid3d odometry_pose_delta = odometry_data_newest.pose.inverse() * odometry_data_oldest.pose;
-  angular_velocity_from_odometry_ =
-      transform::RotationQuaternionToAngleAxisVector(odometry_pose_delta.rotation()) / odometry_time_delta;
-  if (timed_pose_queue_.empty()) {
-    return;
-  }
-  const Eigen::Vector3d linear_velocity_in_tracking_frame_at_newest_odometry_time =
-      odometry_pose_delta.translation() / odometry_time_delta;
-  const Eigen::Quaterniond orientation_at_newest_odometry_time =
-      timed_pose_queue_.back().pose.rotation() *
-      ExtrapolateRotation(odometry_data_newest.time, odometry_imu_tracker_.get());
-  linear_velocity_from_odometry_ =
-      orientation_at_newest_odometry_time * linear_velocity_in_tracking_frame_at_newest_odometry_time;
-}
 
 void DrExtrapolator::AddWheelData(const sensor::WheelSpeedData& wheelspeed_data) {
-//  CHECK(timed_pose_queue_.empty() || wheelspeed_data.time >= timed_pose_queue_.back().time);
-  wheelspeed_data_.push_back(wheelspeed_data);
-  current_wheelspeed_ = wheelspeed_data;
-  TrimWheelSpeedData();
+  if (!imu_inited_) {
+    static_imu_init_.AddOdom(wheelspeed_data);
+    return ;
+  }
+  eskf_.ObserveWheelSpeed(wheelspeed_data);
 }
 
 transform::Rigid3d DrExtrapolator::ExtrapolatePose(const common::Time time) {
@@ -141,27 +131,6 @@ void DrExtrapolator::UpdateVelocitiesFromPoses() {
   angular_velocity_from_poses_ =
       transform::RotationQuaternionToAngleAxisVector(oldest_pose.rotation().inverse() * newest_pose.rotation()) /
       queue_delta;
-}
-
-void DrExtrapolator::TrimImuData() {
-  while (imu_data_.size() > 1 && !timed_pose_queue_.empty() && imu_data_[1].time <= timed_pose_queue_.back().time) {
-    imu_data_.pop_front();
-  }
-}
-
-void DrExtrapolator::TrimOdometryData() {
-  while (odometry_data_.size() > 2 && !timed_pose_queue_.empty() &&
-         odometry_data_[1].time <= timed_pose_queue_.back().time) {
-    odometry_data_.pop_front();
-  }
-}
-
-void DrExtrapolator::TrimWheelSpeedData() {
-  while (wheelspeed_data_.size() > 2 && !timed_pose_queue_.empty() &&
-         wheelspeed_data_[1].time <= timed_pose_queue_.back().time) {
-
-    wheelspeed_data_.pop_front();
-  }
 }
 
 void DrExtrapolator::AdvanceImuTracker(const common::Time time, ImuTracker* const imu_tracker) const {
@@ -218,34 +187,6 @@ DrExtrapolator::ExtrapolationResult DrExtrapolator::ExtrapolatePosesWithGravity(
       odometry_data_.size() < 2 ? linear_velocity_from_poses_ : linear_velocity_from_odometry_;
   return ExtrapolationResult{poses, ExtrapolatePose(times.back()), current_velocity,
                              EstimateGravityOrientation(times.back())};
-}
-
-void DrExtrapolator::SystemStaticInit(const sensor::ImuData& imu_data) {
-  /// 目前仅初始化一次,考虑后续多次初始化
-  if (!static_init_ || init_success_.load() || wheelspeed_data_.empty()) {
-    return ;
-  }
-
-  /// 静止初始化
-  if (!StaticCheck(current_wheelspeed_.wheelspeed_left, current_wheelspeed_.wheelspeed_right)) {
-    imu_init_vec_.clear();
-  }
-  imu_init_vec_.push_back(imu_data);
-  auto InitImuBias = [&](const std::vector<sensor::ImuData>& imu_vec) {
-    Eigen::Vector3d gyro = Eigen::Vector3d ::Zero();
-    Eigen::Vector3d acce = Eigen::Vector3d ::Zero();
-    for (const sensor::ImuData& msg : imu_vec) {
-      gyro += msg.angular_velocity;
-      acce += msg.linear_acceleration;
-    }
-    bias_gyro_ = gyro / double(imu_vec.size());
-    acce_avr_ = acce / double(imu_vec.size());
-    LOG(INFO) << "imu gyro bias: " << bias_gyro_.transpose();
-  };
-  if (imu_init_vec_.size() > 200) {
-    InitImuBias(imu_init_vec_);
-    init_success_.store(true);
-  }
 }
 
 }  // namespace mapping

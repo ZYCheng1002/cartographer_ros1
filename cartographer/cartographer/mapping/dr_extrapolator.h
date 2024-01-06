@@ -51,22 +51,7 @@ class DrExtrapolator : public PoseExtrapolatorInterface {
   Eigen::Quaterniond EstimateGravityOrientation(common::Time time) override;
 
  private:
-  ///@brief 系统初始化
-  void SystemStaticInit(const sensor::ImuData& imu_data);
-
-  ///@brief 静态检查
-  inline bool StaticCheck(double x, double y) { return fabs(x) <= 0.1 && fabs(y) <= 0.1; }
-
   void UpdateVelocitiesFromPoses();
-
-  ///@brief imu列队处理
-  void TrimImuData();
-
-  ///@brief wheel列队处理
-  void TrimWheelSpeedData();
-
-  ///@brief odom列队处理
-  void TrimOdometryData();
 
   void AdvanceImuTracker(common::Time time, ImuTracker* imu_tracker) const;
   Eigen::Quaterniond ExtrapolateRotation(common::Time time, ImuTracker* imu_tracker) const;
@@ -95,14 +80,12 @@ class DrExtrapolator : public PoseExtrapolatorInterface {
   Eigen::Vector3d linear_velocity_from_odometry_ = Eigen::Vector3d::Zero();   /// 轮速获得的线速度
   Eigen::Vector3d angular_velocity_from_odometry_ = Eigen::Vector3d::Zero();  /// match获得的角速度
 
-  std::deque<sensor::WheelSpeedData> wheelspeed_data_;  /// 轮速数据
-  sensor::WheelSpeedData current_wheelspeed_;           /// 此时的轮速
-  std::vector<sensor::ImuData> imu_init_vec_;           /// 用于imu初始化
-  std::atomic<bool> init_success_{false};               /// 递推系统初始化成功标志位
-  bool static_init_;                                    /// 是否进行静止初始化
+  /// eskf
+  bool use_static_init_ = false;
+  StaticIMUInit static_imu_init_;
+  ESKFD eskf_;
+  bool imu_inited_ = false;
 
-  Eigen::Vector3d bias_gyro_ = Eigen::Vector3d::Zero();  /// 陀螺仪零偏
-  Eigen::Vector3d acce_avr_ = Eigen::Vector3d::Zero();
 };
 
 }  // namespace mapping
