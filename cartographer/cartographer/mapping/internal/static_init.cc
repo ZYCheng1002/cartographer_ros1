@@ -11,12 +11,12 @@
 
 namespace cartographer {
 namespace mapping {
-bool StaticIMUInit::AddIMU(const sensor::ImuData& imu) {
+bool StaticIMUInit::AddImu(const sensor::ImuData& imu) {
   if (init_success_) {
     return true;
   }
 
-  if (options_->use_speed_for_static_checking_ && !is_static_) {
+  if (options_.use_speed_for_static_checking_ && !is_static_) {
     LOG(WARNING) << "wait for vehicle static";
     init_imu_deque_.clear();
     return false;
@@ -32,13 +32,13 @@ bool StaticIMUInit::AddIMU(const sensor::ImuData& imu) {
   init_imu_deque_.push_back(imu);
 
   double init_time = ToNormalSeconds(imu.time) - init_start_time_;  // 初始化经过时间
-  if (init_time > options_->init_time_seconds_) {
+  if (init_time > options_.init_time_seconds_) {
     // 尝试初始化逻辑
     TryInit();
   }
 
   // 维持初始化队列长度
-  while (init_imu_deque_.size() > options_->init_imu_queue_max_size_) {
+  while (init_imu_deque_.size() > options_.init_imu_queue_max_size_) {
     init_imu_deque_.pop_front();
   }
 
@@ -46,24 +46,25 @@ bool StaticIMUInit::AddIMU(const sensor::ImuData& imu) {
   return false;
 }
 
-bool StaticIMUInit::AddOdom(const sensor::WheelSpeedData& odom) {
+bool StaticIMUInit::AddWheelSpeed(const sensor::WheelSpeedData& wheel_speed) {
   // 判断车辆是否静止
   if (init_success_) {
     return true;
   }
 
-//  if (odom.left_pulse_ < options_.static_odom_pulse_ && odom.right_pulse_ < options_.static_odom_pulse_) {
-//    is_static_ = true;
-//  } else {
-//    is_static_ = false;
-//  }
-  if (odom.wheelspeed_left < options_->static_odom_speed_ && odom.wheelspeed_right < options_->static_odom_speed_) {
+  //  if (odom.left_pulse_ < options_.static_odom_pulse_ && odom.right_pulse_ < options_.static_odom_pulse_) {
+  //    is_static_ = true;
+  //  } else {
+  //    is_static_ = false;
+  //  }
+  if (std::abs(wheel_speed.wheelspeed_left) < options_.max_static_v_ &&
+      std::abs(wheel_speed.wheelspeed_right) < options_.max_static_v_) {
     is_static_ = true;
   } else {
     is_static_ = false;
   }
 
-  current_time_ = ToNormalSeconds(odom.time);
+  current_time_ = ToNormalSeconds(wheel_speed.time);
   return true;
 }
 
@@ -74,25 +75,27 @@ bool StaticIMUInit::TryInit() {
 
   // 计算均值和方差
   Vec3d mean_gyro, mean_acce;
-  ComputeMeanAndCovDiag(init_imu_deque_, mean_gyro, cov_gyro_, [](const sensor::ImuData& imu) { return imu.angular_velocity; });
-  ComputeMeanAndCovDiag(init_imu_deque_, mean_acce, cov_acce_, [this](const sensor::ImuData& imu) { return imu.linear_acceleration; });
+  ComputeMeanAndCovDiag(init_imu_deque_, mean_gyro, cov_gyro_,
+                        [](const sensor::ImuData& imu) { return imu.angular_velocity; });
+  ComputeMeanAndCovDiag(init_imu_deque_, mean_acce, cov_acce_,
+                        [this](const sensor::ImuData& imu) { return imu.linear_acceleration; });
 
   // 以acce均值为方向，取9.8长度为重力
   LOG(INFO) << "mean acce: " << mean_acce.transpose();
-  gravity_ = -mean_acce / mean_acce.norm() * options_->gravity_norm_;
+  gravity_ = -mean_acce / mean_acce.norm() * options_.gravity_norm_;
 
   // 重新计算加计的协方差
   ComputeMeanAndCovDiag(init_imu_deque_, mean_acce, cov_acce_,
-                              [this](const sensor::ImuData& imu) { return imu.linear_acceleration + gravity_; });
+                        [this](const sensor::ImuData& imu) { return imu.linear_acceleration + gravity_; });
 
   // 检查IMU噪声
-  if (cov_gyro_.norm() > options_->max_static_gyro_var) {
-    LOG(ERROR) << "陀螺仪测量噪声太大" << cov_gyro_.norm() << " > " << options_->max_static_gyro_var;
+  if (cov_gyro_.norm() > options_.max_static_gyro_var) {
+    LOG(ERROR) << "陀螺仪测量噪声太大" << cov_gyro_.norm() << " > " << options_.max_static_gyro_var;
     return false;
   }
 
-  if (cov_acce_.norm() > options_->max_static_acce_var) {
-    LOG(ERROR) << "加计测量噪声太大" << cov_acce_.norm() << " > " << options_->max_static_acce_var;
+  if (cov_acce_.norm() > options_.max_static_acce_var) {
+    LOG(ERROR) << "加计测量噪声太大" << cov_acce_.norm() << " > " << options_.max_static_acce_var;
     return false;
   }
 

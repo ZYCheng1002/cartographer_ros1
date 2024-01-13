@@ -20,9 +20,7 @@ DrExtrapolator::DrExtrapolator(const common::Duration pose_queue_duration, doubl
       gravity_time_constant_(imu_gravity_time_constant),
       cached_extrapolated_pose_{common::Time::min(), transform::Rigid3d::Identity()} {
   use_static_init_ = static_init;
-  auto static_init_option = StaticIMUInit::Options();
-  LOG(WARNING) << static_init_option.static_odom_speed_;
-   static_imu_init_ = StaticIMUInit(static_init_option);
+   static_imu_init_ = StaticIMUInit();
    eskf_ = ESKFD();
    // timed_eskf_pose_buffer.SetSizeLimit(300);
 }
@@ -85,7 +83,7 @@ void DrExtrapolator::AddPose(const common::Time time, const transform::Rigid3d& 
 
 void DrExtrapolator::AddImuData(const sensor::ImuData& imu_data) {
   if (!static_imu_init_.InitSuccess()) {
-    static_imu_init_.AddIMU(imu_data);
+    static_imu_init_.AddImu(imu_data);
     return ;
   }
   /// 需要对imu进行初始化
@@ -111,7 +109,7 @@ void DrExtrapolator::AddOdometryData(const sensor::OdometryData& odometry_data) 
 
 void DrExtrapolator::AddWheelData(const sensor::WheelSpeedData& wheelspeed_data) {
   if (!imu_inited_) {
-    static_imu_init_.AddOdom(wheelspeed_data);
+    static_imu_init_.AddWheelSpeed(wheelspeed_data);
     return ;
   }
   eskf_.ObserveWheelSpeed(wheelspeed_data);

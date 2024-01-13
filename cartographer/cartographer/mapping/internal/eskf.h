@@ -215,9 +215,6 @@ class ESKF{
   MotionNoiseT Q_ = MotionNoiseT::Zero();
   OdomNoiseT odom_noise_ = OdomNoiseT::Zero();
 
-  /// 标志位
-  bool first_gnss_ = true;  // 是否为第一个gnss数据
-
   /// 配置项
   Options options_;
 };
@@ -228,6 +225,7 @@ using ESKFF = ESKF<float>;
 template<typename S>
 bool ESKF<S>::Predict(const sensor::ImuData &imu) {
   double imu_timestamp = common::ToNormalSeconds(imu.time);
+  LOG(WARNING) << "imu time: " << std::fixed << imu_timestamp;
   assert(imu_timestamp >= current_time_);
 
   double dt = imu_timestamp - current_time_;
@@ -269,6 +267,7 @@ bool ESKF<S>::Predict(const sensor::ImuData &imu) {
 template<typename S>
 bool ESKF<S>::ObserveWheelSpeed(const sensor::WheelSpeedData &odom) {
   double odom_timestamp = common::ToNormalSeconds(odom.time);
+  LOG(WARNING) << "wheel time: " << std::fixed << odom_timestamp;
   if (odom_timestamp > current_time_) {
     return false;
   }
