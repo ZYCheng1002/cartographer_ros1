@@ -39,8 +39,8 @@ DrExtrapolator::~DrExtrapolator() {
   auto save_result = [&file](const Vec3d& position) {
     file << position.x() << " " << position.y();
   };
-  for (const auto& pose : timed_eskf_pose_buffer.GetTimedPoseDeque()) {
-    save_result(pose.transform.translation());
+  for (const auto& pose : eskf_state_deque_) {
+    save_result(pose.p_);
     file << std::endl;
   }
   file.close();
@@ -98,6 +98,7 @@ void DrExtrapolator::AddImuData(const sensor::ImuData& imu_data) {
   /// 预测
   eskf_.Predict(imu_data);
   auto state = eskf_.GetNominalState();
+  eskf_state_deque_.push_back(state);
   transform::Rigid3d pose(state.p_, state.R_.unit_quaternion());
   common::Time time_current = common::NormalToTime(state.timestamp_);
   timed_eskf_pose_buffer.Push(imu_data.time, pose);

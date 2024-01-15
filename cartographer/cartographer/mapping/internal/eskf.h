@@ -225,7 +225,6 @@ using ESKFF = ESKF<float>;
 template<typename S>
 bool ESKF<S>::Predict(const sensor::ImuData &imu) {
   double imu_timestamp = common::ToNormalSeconds(imu.time);
-  LOG(WARNING) << "imu time: " << std::fixed << imu_timestamp;
   assert(imu_timestamp >= current_time_);
 
   double dt = imu_timestamp - current_time_;
@@ -267,8 +266,7 @@ bool ESKF<S>::Predict(const sensor::ImuData &imu) {
 template<typename S>
 bool ESKF<S>::ObserveWheelSpeed(const sensor::WheelSpeedData &odom) {
   double odom_timestamp = common::ToNormalSeconds(odom.time);
-  LOG(WARNING) << "wheel time: " << std::fixed << odom_timestamp;
-  if (odom_timestamp > current_time_) {
+  if (odom_timestamp < current_time_) {
     return false;
   }
   /// odom 修正以及雅可比

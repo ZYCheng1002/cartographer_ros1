@@ -89,6 +89,7 @@ class DrExtrapolator : public PoseExtrapolatorInterface {
   ESKFD eskf_;
   bool imu_inited_ = false;
   transform::TransformInterpolationBuffer timed_eskf_pose_buffer;
+  std::deque<NavStated> eskf_state_deque_;
   std::mutex eskf_buffer_mutex;
 };
 
